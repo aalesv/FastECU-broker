@@ -13,6 +13,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static")
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets)
 find_package(Qt6 REQUIRED COMPONENTS WebSockets)
+find_package(Qt6 REQUIRED COMPONENTS Widgets)
 
 set(PROJECT_SOURCES
         main.cpp
@@ -48,7 +49,7 @@ endif()
 
 target_link_libraries(FastECU-broker PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)
 target_link_libraries(FastECU-broker PUBLIC Qt::WebSockets)
-
+target_link_libraries(FastECU-broker PRIVATE Qt6::Widgets)
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
 # If you are developing for iOS or macOS you should consider setting an
@@ -80,3 +81,7 @@ file (GLOB SSL_CERT_AND_KEY "${CMAKE_SOURCE_DIR}/localhost.*")
 add_custom_command(TARGET FastECU-broker POST_BUILD
                    COMMAND ${CMAKE_COMMAND} -E copy_if_different
                        ${SSL_CERT_AND_KEY} $<TARGET_FILE_DIR:FastECU-broker>)
+#Copy icons
+add_custom_command(TARGET FastECU-broker POST_BUILD
+                   COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different
+                       "${CMAKE_SOURCE_DIR}/icons" "$<TARGET_FILE_DIR:FastECU-broker>/icons")

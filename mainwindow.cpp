@@ -15,6 +15,48 @@ QString now()
     return formattedTime;
 }
 
+//==========OnOffLabel===========
+
+OnOffLabel::OnOffLabel(QString img_on_path,
+           QString img_off_path,
+           QString tooltip_on,
+           QString tooltip_off,
+           int w,
+           int h,
+           QLabel *parent)
+    : QLabel(parent)
+    , img_on_path (img_on_path)
+    , img_off_path(img_off_path)
+    , tooltip_on(tooltip_on)
+    , tooltip_off(tooltip_off)
+    , w(w)
+    , h(h)
+{
+    pix_on ->load(img_on_path);
+    pix_off->load(img_off_path);
+}
+
+void OnOffLabel::setOn(bool b)
+{
+    QSharedPointer<QPixmap> p;
+    QString t;
+    if (b)
+    {
+        p = pix_on;
+        t = tooltip_on;
+    }
+    else
+    {
+        p = pix_off;
+        t = tooltip_off;
+    }
+    setPixmap(p->scaled(w,h,Qt::KeepAspectRatio));
+    setToolTip(t);
+}
+
+//==========OnOffLabel===========
+//==========MainWindow===========
+
 void MainWindow::log(QString message)
 {
     ui->plainTextEdit_logs->appendPlainText(now()+" "+message);
@@ -31,6 +73,12 @@ MainWindow::MainWindow(QWidget *parent)
     ui->lineEdit_server_port->setValidator( new QIntValidator(1, 65535, this) );
     ui->lineEdit_server_port->setText( QString::number(server_port) );
     ui->plainTextEdit_logs->setReadOnly(true);
+    statusBar()->addWidget(broker_status_label.get());
+    statusBar()->addWidget(server_status_label.get());
+    statusBar()->addWidget(client_status_label.get());
+    server_status_label->setOff(true);
+    client_status_label->setOff(true);
+
     this->update_ui();
 }
 
@@ -63,11 +111,11 @@ void MainWindow::resizeEvent(QResizeEvent *e)
 
 void MainWindow::update_ui()
 {
-    ui->lineEdit_client_port->setDisabled(this->server_started);
-    ui->lineEdit_server_port->setDisabled(this->server_started);
-    ui->pushButton_start->setDisabled(this->server_started);
-    ui->pushButton_stop->setEnabled(this->server_started);
-
+    ui->lineEdit_client_port->setDisabled(server_started);
+    ui->lineEdit_server_port->setDisabled(server_started);
+    ui->pushButton_start->setDisabled(server_started);
+    ui->pushButton_stop->setEnabled(server_started);
+    broker_status_label->setOn(server_started);
 }
 
 void MainWindow::on_pushButton_start_released()
@@ -76,9 +124,17 @@ void MainWindow::on_pushButton_start_released()
     broker = new Broker(server_port,
                         client_port,
                         this);
-    connect(broker, &Broker::log, this, &MainWindow::log, Qt::QueuedConnection);
     this->server_started = true;
     this->update_ui();
+    connect(broker, &Broker::log, this, &MainWindow::log, Qt::QueuedConnection);
+    connect(broker,   &Broker::client_connected,
+            this, &MainWindow::client_connected);
+    connect(broker,   &Broker::client_disconnected,
+            this, &MainWindow::client_disconnected);
+    connect(broker,   &Broker::server_connected,
+            this, &MainWindow::server_connected);
+    connect(broker,   &Broker::server_disconnected,
+            this, &MainWindow::server_disconnected);
 }
 
 
@@ -88,6 +144,9 @@ void MainWindow::on_pushButton_stop_released()
     delete broker;
     this->server_started = false;
     this->update_ui();
+    //Signals could be lost, set status manually
+    client_status_label->setOff(true);
+    server_status_label->setOff(true);
 }
 
 
@@ -102,3 +161,22 @@ void MainWindow::on_lineEdit_server_port_textChanged(const QString &arg1)
     server_port = arg1.toInt();
 }
 
+void MainWindow::server_connected(QString message)
+{
+    server_status_label->setOn(true);
+}
+
+void MainWindow::server_disconnected(QString message)
+{
+    server_status_label->setOff(true);
+}
+
+void MainWindow::client_connected(QString message)
+{
+    client_status_label->setOn(true);
+}
+
+void MainWindow::client_disconnected(QString message)
+{
+    client_status_label->setOff(true);
+}

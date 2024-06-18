@@ -94,6 +94,7 @@ void SslServer::onNewConnection()
             this, &SslServer::socketDisconnected, Qt::DirectConnection);
 
     peer = pSocket;
+    emit peerConnected("");
 }
 
 //Message is received from network, send it to broker
@@ -143,6 +144,7 @@ void SslServer::socketDisconnected()
 
         peer = nullptr;
         pClient->deleteLater();
+        emit peerDisconnected("");
     }
 }
 
@@ -166,6 +168,15 @@ Broker::Broker(quint16 serverPort,
     //Connect to log signals and chain them
     connect(&server, &SslServer::log, this, &Broker::log, Qt::QueuedConnection);
     connect(&client, &SslServer::log, this, &Broker::log, Qt::QueuedConnection);
+    //Connect to client and server connect/disconnect signals
+    connect(&server, &SslServer::peerConnected,
+            this, &Broker::server_connected, Qt::QueuedConnection);
+    connect(&server, &SslServer::peerDisconnected,
+            this, &Broker::server_disconnected, Qt::QueuedConnection);
+    connect(&client, &SslServer::peerConnected,
+            this, &Broker::client_connected, Qt::QueuedConnection);
+    connect(&client, &SslServer::peerDisconnected,
+            this, &Broker::client_disconnected, Qt::QueuedConnection);
     //Connect to send/receive signals
     connect(&server, &SslServer::sendTextMessageToBroker,
             this, &Broker::receiveTextMessageFromSslServer, Qt::DirectConnection);

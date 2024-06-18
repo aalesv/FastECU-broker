@@ -10,10 +10,6 @@
 QT_FORWARD_DECLARE_CLASS(QWebSocketServer)
 QT_FORWARD_DECLARE_CLASS(QWebSocket)
 
-//using BrokerCallbackBinary = void (*)(QByteArray *);
-//using BrokerCallbackText = void (*)(QString *);
-//using LogCallback = void (*)(QString *);
-
 //Provide 1 connection on a specified port
 //Websocket ovet SSL
 //With callback when data is received
@@ -38,6 +34,8 @@ public slots:
 signals:
     void log(QString message);
     void sendTextMessageToBroker(QString message);
+    void peerConnected(QString message);
+    void peerDisconnected(QString message);
 
 private:
     QWebSocketServer *pWebSocketServer;
@@ -57,6 +55,10 @@ signals:
     void log(QString message);
     void sendTextMessageToSslServer(QString message);
     void sendTextMessageToSslClient(QString message);
+    void server_connected(QString message);
+    void server_disconnected(QString message);
+    void client_connected(QString message);
+    void client_disconnected(QString message);
 
 public slots:
     void receiveTextMessageFromSslServer(QString message);
