@@ -29,11 +29,12 @@ private slots:
 
 public slots:
     void receiveTextMessageFromBroker(QString message);
-    void receiveBinaryMessageFromBroker(QByteArray message);
+    void receiveBinaryMessageFromBroker(QByteArray &message);
 
 signals:
     void log(QString message);
     void sendTextMessageToBroker(QString message);
+    void sendBinaryMessageToBroker(QByteArray &message);
     void peerConnected(QString message);
     void peerDisconnected(QString message);
 
@@ -54,7 +55,9 @@ public:
 signals:
     void log(QString message);
     void sendTextMessageToSslServer(QString message);
+    void sendBinaryMessageToSslServer(QByteArray &message);
     void sendTextMessageToSslClient(QString message);
+    void sendBinaryMessageToSslClient(QByteArray &message);
     void server_connected(QString message);
     void server_disconnected(QString message);
     void client_connected(QString message);
@@ -62,7 +65,9 @@ signals:
 
 public slots:
     void receiveTextMessageFromSslServer(QString message);
+    void receiveBinaryMessageFromSslServer(QByteArray &message);
     void receiveTextMessageFromSslClient(QString message);
+    void receiveBinaryMessageFromSslClient(QByteArray &message);
 
 private:
     quint16 serverPort;

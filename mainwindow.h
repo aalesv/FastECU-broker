@@ -25,7 +25,7 @@ public:
                //height
                int h = 20,
                QLabel *parent=nullptr);
-    ~OnOffLabel(){};
+    ~OnOffLabel(){}
 
     void setOn(bool b);
     void setOff(bool b) {setOn(!b);}

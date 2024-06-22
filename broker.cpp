@@ -100,7 +100,7 @@ void SslServer::onNewConnection()
 //Message is received from network, send it to broker
 void SslServer::processTextMessage(QString message)
 {
-    qDebug() << "SslServer: Peer sent a message";
+    qDebug() << "SslServer: Peer sent text message";
     QWebSocket *pClient = qobject_cast<QWebSocket *>(sender());
     if (pClient !=nullptr)
     {
@@ -112,24 +112,35 @@ void SslServer::processTextMessage(QString message)
 //Message is received from network, send it to broker
 void SslServer::processBinaryMessage(QByteArray message)
 {
-//Not implemented
+    qDebug() << "SslServer: Peer sent binary message";
+    QWebSocket *pClient = qobject_cast<QWebSocket *>(sender());
+    if (pClient !=nullptr)
+    {
+        qDebug() << "SslServer: Sending message to broker";
+        emit sendBinaryMessageToBroker(message);
+    }
 }
 
 //Message is receiver from broker, send it to network
 void SslServer::receiveTextMessageFromBroker(QString message)
 {
-    qDebug() << "SslServer: Received message from broker";
+    qDebug() << "SslServer: Received text message from broker";
     if (peer != nullptr)
     {
-        qDebug() << "SslServer: Sending message to peer";
+        qDebug() << "SslServer: Sending text message to peer";
         peer->sendTextMessage(message);
     }
 }
 
 //Message is receiver from broker, send it to network
-void SslServer::receiveBinaryMessageFromBroker(QByteArray message)
+void SslServer::receiveBinaryMessageFromBroker(QByteArray &message)
 {
-//Not implemented
+    qDebug() << "SslServer: Received binary message from broker";
+    if (peer != nullptr)
+    {
+        qDebug() << "SslServer: Sending binary message to peer";
+        peer->sendBinaryMessage(message);
+    }
 }
 
 void SslServer::socketDisconnected()
@@ -183,10 +194,21 @@ Broker::Broker(quint16 serverPort,
     connect(&client, &SslServer::sendTextMessageToBroker,
             this, &Broker::receiveTextMessageFromSslClient, Qt::DirectConnection);
 
+    connect(&server, &SslServer::sendBinaryMessageToBroker,
+            this, &Broker::receiveBinaryMessageFromSslServer, Qt::DirectConnection);
+    connect(&client, &SslServer::sendBinaryMessageToBroker,
+            this, &Broker::receiveBinaryMessageFromSslClient, Qt::DirectConnection);
+
     connect(this, &Broker::sendTextMessageToSslServer,
             &server, &SslServer::receiveTextMessageFromBroker, Qt::DirectConnection);
     connect(this, &Broker::sendTextMessageToSslClient,
             &client, &SslServer::receiveTextMessageFromBroker, Qt::DirectConnection);
+
+    connect(this, &Broker::sendBinaryMessageToSslServer,
+            &server, &SslServer::receiveBinaryMessageFromBroker, Qt::DirectConnection);
+    connect(this, &Broker::sendBinaryMessageToSslClient,
+            &client, &SslServer::receiveBinaryMessageFromBroker, Qt::DirectConnection);
+
     qDebug() << "Broker: started";
 }
 
@@ -206,17 +228,17 @@ bool Broker::passClientTextMessage(QString &message)
 
 void Broker::receiveTextMessageFromSslServer(QString message)
 {
-    qDebug() << "Broker: received message from server";
-    qDebug() << "Broker: sending message to client";
+    qDebug() << "Broker: received text message from server";
+    qDebug() << "Broker: sending text message to client";
     emit sendTextMessageToSslClient(message);
 }
 
 void Broker::receiveTextMessageFromSslClient(QString message)
 {
-    qDebug() << "Broker: received message from client";
+    qDebug() << "Broker: received text message from client";
     if (passClientTextMessage(message))
     {
-        qDebug() << "Broker: sending message to server";
+        qDebug() << "Broker: sending text message to server";
         emit sendTextMessageToSslServer(message);
     }
     else
@@ -225,3 +247,16 @@ void Broker::receiveTextMessageFromSslClient(QString message)
     }
 }
 
+void Broker::receiveBinaryMessageFromSslServer(QByteArray &message)
+{
+    qDebug() << "Broker: received binary message from server";
+    qDebug() << "Broker: sending binary message to client";
+    emit sendBinaryMessageToSslClient(message);
+}
+
+void Broker::receiveBinaryMessageFromSslClient(QByteArray &message)
+{
+    qDebug() << "Broker: received binary message from client";
+    qDebug() << "Broker: sending binary message to server";
+    emit sendBinaryMessageToSslServer(message);
+}
