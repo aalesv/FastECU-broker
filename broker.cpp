@@ -24,9 +24,14 @@ QString QHostAddressToString(QHostAddress address)
     return ip4String;
 }
 
-SslServer::SslServer(quint16 port, QObject *parent) :
-    QObject(parent),
-    pWebSocketServer(nullptr)
+SslServer::SslServer(quint16 port, QObject *parent)
+    : SslServer(port, "", parent)
+{}
+
+SslServer::SslServer(quint16 port, QString allowedPath, QObject *parent)
+    : QObject(parent)
+    , pWebSocketServer(nullptr)
+    , allowedPath(allowedPath)
 {
     pWebSocketServer = new QWebSocketServer(QStringLiteral("FastECU Broker Server"),
                                             QWebSocketServer::SecureMode,
@@ -82,6 +87,15 @@ void SslServer::onNewConnection()
 
     QString address = QHostAddressToString(pSocket->peerAddress());
     QString port = QString::number(pSocket->peerPort());
+
+    //Allow connections only at certain path
+    if (pSocket->requestUrl().path() != "/"+allowedPath)
+    {
+        emit log("SslServer: Peer "+address+":"+port+" tries to connect at invalid path");
+        qDebug() << "SslServer: Peer " << address << port << "tries to connect at invalid path";
+        delete pSocket;
+        return;
+    }
 
     emit log("SslServer: Peer connected: "+address+":"+port);
     qDebug() << "SslServer: Peer connected:" << address << port;
@@ -166,15 +180,24 @@ void SslServer::onSslErrors(const QList<QSslError> &)
 }
 
 //==============================================
+Broker::Broker(quint16 serverPort,
+               quint16 clientPort,
+               QObject *parent)
+        :Broker(serverPort,
+                clientPort,
+                "",
+                parent)
+{}
 
 Broker::Broker(quint16 serverPort,
                quint16 clientPort,
-               QObject *parent) :
-    QObject(parent),
-    serverPort(serverPort),
-    clientPort(clientPort),
-    server(SslServer(serverPort, this)),
-    client(SslServer(clientPort, this))
+               QString server_password,
+               QObject *parent)
+    : QObject(parent)
+    , serverPort(serverPort)
+    , clientPort(clientPort)
+    , server(SslServer(serverPort, server_password, this))
+    , client(SslServer(clientPort, this))
 {
     //Connect to log signals and chain them
     connect(&server, &SslServer::log, this, &Broker::log, Qt::QueuedConnection);

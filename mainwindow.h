@@ -3,6 +3,7 @@
 
 #include <QMainWindow>
 #include <QLabel>
+#include <QRandomGenerator>
 #include "broker.h"
 
 QT_BEGIN_NAMESPACE
@@ -62,12 +63,16 @@ private slots:
     void client_connected(QString message);
     void client_disconnected(QString message);
 
+    void on_lineEdit_server_password_textChanged(const QString &arg1);
+
 private:
     Ui::MainWindow *ui;
     void resizeEvent(QResizeEvent *e);
     bool server_started = false;
     int server_port = 33314;
     int client_port = 33315;
+    QString server_password =
+        QString::number(QRandomGenerator::global()->bounded(1111, 9999));
     Broker *broker = nullptr;
     QSharedPointer<OnOffLabel> broker_status_label =
         QSharedPointer<OnOffLabel>(

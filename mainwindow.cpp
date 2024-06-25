@@ -72,6 +72,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->lineEdit_client_port->setText( QString::number(client_port) );
     ui->lineEdit_server_port->setValidator( new QIntValidator(1, 65535, this) );
     ui->lineEdit_server_port->setText( QString::number(server_port) );
+    ui->lineEdit_server_password->setText(server_password);
     ui->plainTextEdit_logs->setReadOnly(true);
     statusBar()->addWidget(broker_status_label.get());
     statusBar()->addWidget(server_status_label.get());
@@ -115,6 +116,7 @@ void MainWindow::update_ui()
     ui->lineEdit_server_port->setDisabled(server_started);
     ui->pushButton_start->setDisabled(server_started);
     ui->pushButton_stop->setEnabled(server_started);
+    ui->lineEdit_server_password->setDisabled(server_started);
     broker_status_label->setOn(server_started);
 }
 
@@ -123,6 +125,7 @@ void MainWindow::on_pushButton_start_released()
     this->log("Starting server");
     broker = new Broker(server_port,
                         client_port,
+                        server_password,
                         this);
     this->server_started = true;
     this->update_ui();
@@ -180,3 +183,9 @@ void MainWindow::client_disconnected(QString message)
 {
     client_status_label->setOff(true);
 }
+
+void MainWindow::on_lineEdit_server_password_textChanged(const QString &arg1)
+{
+    server_password = arg1;
+}
+

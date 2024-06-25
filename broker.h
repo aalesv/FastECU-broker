@@ -18,6 +18,7 @@ class SslServer : public QObject
     Q_OBJECT
 public:
     explicit SslServer(quint16 port, QObject *parent = nullptr);
+    explicit SslServer(quint16 port, QString allowedPath = "", QObject *parent = nullptr);
     ~SslServer() override;
 
 private slots:
@@ -41,6 +42,8 @@ signals:
 private:
     QWebSocketServer *pWebSocketServer;
     QWebSocket * peer = nullptr;
+    //Allow to connect only at '/allowedPath' URL
+    QString allowedPath = "";
 };
 
 class Broker : public QObject
@@ -49,6 +52,11 @@ class Broker : public QObject
 public:
     explicit Broker(quint16 serverPort,
                     quint16 clientPort,
+                    QObject *parent = nullptr);
+
+    explicit Broker(quint16 serverPort,
+                    quint16 clientPort,
+                    QString server_password,
                     QObject *parent = nullptr);
     ~Broker() override;
 
@@ -72,6 +80,7 @@ public slots:
 private:
     quint16 serverPort;
     quint16 clientPort;
+    QString server_password = "";
     SslServer server;
     SslServer client;
     bool passClientTextMessage(QString &message);

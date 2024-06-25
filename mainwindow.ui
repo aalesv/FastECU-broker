@@ -117,7 +117,7 @@
     <widget class="QPushButton" name="pushButton_start">
      <property name="geometry">
       <rect>
-       <x>220</x>
+       <x>450</x>
        <y>30</y>
        <width>61</width>
        <height>52</height>
@@ -133,7 +133,7 @@
      </property>
      <property name="geometry">
       <rect>
-       <x>290</x>
+       <x>520</x>
        <y>30</y>
        <width>61</width>
        <height>52</height>
@@ -141,6 +141,38 @@
      </property>
      <property name="text">
       <string>Stop</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_server_password">
+     <property name="geometry">
+      <rect>
+       <x>220</x>
+       <y>60</y>
+       <width>91</width>
+       <height>16</height>
+      </rect>
+     </property>
+     <property name="autoFillBackground">
+      <bool>false</bool>
+     </property>
+     <property name="text">
+      <string>Server password</string>
+     </property>
+    </widget>
+    <widget class="QLineEdit" name="lineEdit_server_password">
+     <property name="enabled">
+      <bool>true</bool>
+     </property>
+     <property name="geometry">
+      <rect>
+       <x>320</x>
+       <y>60</y>
+       <width>115</width>
+       <height>22</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string/>
      </property>
     </widget>
    </widget>
