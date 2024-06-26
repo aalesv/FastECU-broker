@@ -122,28 +122,36 @@ void MainWindow::update_ui()
 
 void MainWindow::on_pushButton_start_released()
 {
-    this->log("Starting server");
+    this->log("Starting broker");
     broker = new Broker(server_port,
                         client_port,
                         server_password,
                         this);
-    this->server_started = true;
-    this->update_ui();
-    connect(broker, &Broker::log, this, &MainWindow::log, Qt::QueuedConnection);
-    connect(broker,   &Broker::client_connected,
-            this, &MainWindow::client_connected);
-    connect(broker,   &Broker::client_disconnected,
-            this, &MainWindow::client_disconnected);
-    connect(broker,   &Broker::server_connected,
-            this, &MainWindow::server_connected);
-    connect(broker,   &Broker::server_disconnected,
-            this, &MainWindow::server_disconnected);
+    this->server_started = broker->start();
+    if (this->server_started)
+    {
+        this->update_ui();
+        connect(broker, &Broker::log, this, &MainWindow::log, Qt::QueuedConnection);
+        connect(broker,   &Broker::client_connected,
+                this, &MainWindow::client_connected);
+        connect(broker,   &Broker::client_disconnected,
+                this, &MainWindow::client_disconnected);
+        connect(broker,   &Broker::server_connected,
+                this, &MainWindow::server_connected);
+        connect(broker,   &Broker::server_disconnected,
+                this, &MainWindow::server_disconnected);
+    }
+    else
+    {
+        this->log("Failed to start broker");
+        broker->deleteLater();
+    }
 }
 
 
 void MainWindow::on_pushButton_stop_released()
 {
-    this->log("Stopping server");
+    this->log("Stopping broker");
     delete broker;
     this->server_started = false;
     this->update_ui();

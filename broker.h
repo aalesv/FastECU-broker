@@ -29,6 +29,8 @@ private slots:
     void onSslErrors(const QList<QSslError> &errors);
 
 public slots:
+    bool start(void);
+    void stop(void);
     void receiveTextMessageFromBroker(QString message);
     void receiveBinaryMessageFromBroker(QByteArray &message);
 
@@ -40,6 +42,7 @@ signals:
     void peerDisconnected(QString message);
 
 private:
+    quint16 port;
     QWebSocketServer *pWebSocketServer;
     QWebSocket * peer = nullptr;
     //Allow to connect only at '/allowedPath' URL
@@ -72,6 +75,8 @@ signals:
     void client_disconnected(QString message);
 
 public slots:
+    bool start(void);
+    void stop(void);
     void receiveTextMessageFromSslServer(QString message);
     void receiveBinaryMessageFromSslServer(QByteArray &message);
     void receiveTextMessageFromSslClient(QString message);

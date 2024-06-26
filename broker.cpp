@@ -30,6 +30,7 @@ SslServer::SslServer(quint16 port, QObject *parent)
 
 SslServer::SslServer(quint16 port, QString allowedPath, QObject *parent)
     : QObject(parent)
+    , port(port)
     , pWebSocketServer(nullptr)
     , allowedPath(allowedPath)
 {
@@ -50,9 +51,19 @@ SslServer::SslServer(quint16 port, QString allowedPath, QObject *parent)
     sslConfiguration.setPrivateKey(sslKey);
     pWebSocketServer->setSslConfiguration(sslConfiguration);
     pWebSocketServer->setMaxPendingConnections(1);
+}
 
+SslServer::~SslServer()
+{
+    this->stop();
+    pWebSocketServer->deleteLater();
+}
+
+bool SslServer::start(void)
+{
     //Start a server
-    if (pWebSocketServer->listen(QHostAddress::Any, port))
+    bool r = pWebSocketServer->listen(QHostAddress::Any, port);
+    if (r)
     {
         qDebug() << "SslServer: server listening on port" << port;
         connect(pWebSocketServer, &QWebSocketServer::newConnection,
@@ -60,10 +71,15 @@ SslServer::SslServer(quint16 port, QString allowedPath, QObject *parent)
         connect(pWebSocketServer, &QWebSocketServer::sslErrors,
                 this, &SslServer::onSslErrors,Qt::DirectConnection);
     }
-    //TODO Handle case when listen fails
+    else
+    {
+        qDebug() << "SslServer: failed to start server on port" << port;
+        emit log("Failed to open port "+QString::number(port));
+    }
+    return r;
 }
 
-SslServer::~SslServer()
+void SslServer::stop(void)
 {
     qDebug() << "SslServer: server stopping on port" << pWebSocketServer->serverPort();
     pWebSocketServer->close();
@@ -85,20 +101,20 @@ void SslServer::onNewConnection()
         return;
     }
 
-    QString address = QHostAddressToString(pSocket->peerAddress());
-    QString port = QString::number(pSocket->peerPort());
+    QString p_addr = QHostAddressToString(pSocket->peerAddress());
+    QString p_port = QString::number(pSocket->peerPort());
 
     //Allow connections only at certain path
     if (pSocket->requestUrl().path() != "/"+allowedPath)
     {
-        emit log("SslServer: Peer "+address+":"+port+" tries to connect at invalid path");
-        qDebug() << "SslServer: Peer " << address << port << "tries to connect at invalid path";
+        emit log("SslServer: Peer "+p_addr+":"+p_port+" tries to connect at invalid path");
+        qDebug() << "SslServer: Peer " << p_addr << p_port << "tries to connect at invalid path";
         delete pSocket;
         return;
     }
 
-    emit log("SslServer: Peer connected: "+address+":"+port);
-    qDebug() << "SslServer: Peer connected:" << address << port;
+    emit log("SslServer: Peer connected: "+p_addr+":"+p_port);
+    qDebug() << "SslServer: Peer connected:" << p_addr << p_port;
     //Qt::DirectConnection mode calls slot immediately after signal emittig
     connect(pSocket, &QWebSocket::textMessageReceived,
             this, &SslServer::processTextMessage, Qt::DirectConnection);
@@ -162,10 +178,10 @@ void SslServer::socketDisconnected()
     QWebSocket *pClient = qobject_cast<QWebSocket *>(sender());
     if (pClient)
     {
-        QString address = QHostAddressToString(pClient->peerAddress());
-        QString port = QString::number(pClient->peerPort());
-        emit log("Peer disconnected: "+address+":"+port);
-        qDebug() << "SslServer: Peer disconnected:" << address << port;
+        QString p_addr = QHostAddressToString(pClient->peerAddress());
+        QString p_port = QString::number(pClient->peerPort());
+        emit log("Peer disconnected: "+p_addr+":"+p_port);
+        qDebug() << "SslServer: Peer disconnected:" << p_addr << p_port;
 
         peer = nullptr;
         pClient->deleteLater();
@@ -231,13 +247,33 @@ Broker::Broker(quint16 serverPort,
             &server, &SslServer::receiveBinaryMessageFromBroker, Qt::DirectConnection);
     connect(this, &Broker::sendBinaryMessageToSslClient,
             &client, &SslServer::receiveBinaryMessageFromBroker, Qt::DirectConnection);
-
-    qDebug() << "Broker: started";
 }
 
 Broker::~Broker()
 {
+    this->stop();
+}
+
+bool Broker::start(void)
+{
+    bool r = server.start() && client.start();
+    if (r)
+    {
+        qDebug() << "Broker: started";
+    }
+    else
+    {
+        qDebug() << "Failed to start broker";
+        this->stop();
+    }
+    return r;
+}
+
+void Broker::stop(void)
+{
     qDebug() << "Broker: stopped";
+    server.stop();
+    client.stop();
 }
 
 //Returns true if message is good, false otherwise
@@ -245,7 +281,6 @@ Broker::~Broker()
 //TODO Rename function - non-descriptive funcion name.
 bool Broker::passClientTextMessage(QString &message)
 {
-    //TODO Check JSON format, filter write request
     return true;
 }
 
