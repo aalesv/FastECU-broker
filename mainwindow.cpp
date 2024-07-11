@@ -18,12 +18,12 @@ QString now()
 //==========OnOffLabel===========
 
 OnOffLabel::OnOffLabel(QString img_on_path,
-           QString img_off_path,
-           QString tooltip_on,
-           QString tooltip_off,
-           int w,
-           int h,
-           QLabel *parent)
+                       QString img_off_path,
+                       QString tooltip_on,
+                       QString tooltip_off,
+                       int w,
+                       int h,
+                       QLabel *parent)
     : QLabel(parent)
     , img_on_path (img_on_path)
     , img_off_path(img_off_path)

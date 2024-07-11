@@ -81,8 +81,11 @@ bool SslServer::start(void)
 
 void SslServer::stop(void)
 {
-    qDebug() << "SslServer: server stopping on port" << pWebSocketServer->serverPort();
-    pWebSocketServer->close();
+    if (pWebSocketServer->isListening())
+    {
+        qDebug() << "SslServer: server stopping on port" << port;
+        pWebSocketServer->close();
+    }
 }
 
 void SslServer::onNewConnection()
@@ -189,10 +192,10 @@ void SslServer::socketDisconnected()
     }
 }
 
-void SslServer::onSslErrors(const QList<QSslError> &)
+void SslServer::onSslErrors(const QList<QSslError> &errors)
 {
     emit log("SSL server errors occurred");
-    qDebug() << "SslServer: Ssl errors occurred";
+    qDebug() << "SslServer: Ssl errors occurred" << errors;
 }
 
 //==============================================
