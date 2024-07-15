@@ -12,10 +12,12 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static")
 
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets)
-find_package(Qt6 REQUIRED COMPONENTS WebSockets)
-find_package(Qt6 REQUIRED COMPONENTS Widgets)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS WebSockets)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets)
 
 set(PROJECT_SOURCES
+        broker.h
+        broker.cpp
         main.cpp
         mainwindow.cpp
         mainwindow.h
@@ -26,8 +28,6 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     qt_add_executable(FastECU-broker
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
-        broker.h
-        broker.cpp
     )
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET FastECU-broker APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
@@ -49,7 +49,7 @@ endif()
 
 target_link_libraries(FastECU-broker PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)
 target_link_libraries(FastECU-broker PUBLIC Qt::WebSockets)
-target_link_libraries(FastECU-broker PRIVATE Qt6::Widgets)
+target_link_libraries(FastECU-broker PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
 # If you are developing for iOS or macOS you should consider setting an
