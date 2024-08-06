@@ -21,6 +21,9 @@ public:
     explicit SslServer(quint16 port, QString allowedPath = "", QObject *parent = nullptr);
     ~SslServer() override;
 
+    bool isSslCertFileFound();
+    bool isSslKeyFileFound();
+
 private slots:
     void onNewConnection();
     void processTextMessage(QString message);
@@ -42,6 +45,9 @@ signals:
     void peerDisconnected(QString message);
 
 private:
+    bool certFileFound = false;
+    bool keyFileFound = false;
+
     quint16 port;
     QWebSocketServer *pWebSocketServer;
     QWebSocket * peer = nullptr;
@@ -62,6 +68,9 @@ public:
                     QString server_password,
                     QObject *parent = nullptr);
     ~Broker() override;
+
+    bool isSslCertFileFound();
+    bool isSslKeyFileFound();
 
 signals:
     void log(QString message);

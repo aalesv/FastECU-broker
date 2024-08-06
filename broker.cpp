@@ -34,14 +34,19 @@ SslServer::SslServer(quint16 port, QString allowedPath, QObject *parent)
     , pWebSocketServer(nullptr)
     , allowedPath(allowedPath)
 {
+    certFileFound = false;
+    keyFileFound = false;
+    qDebug() << "Check cert files";
     pWebSocketServer = new QWebSocketServer(QStringLiteral("FastECU Broker Server"),
                                             QWebSocketServer::SecureMode,
                                             this);
     QSslConfiguration sslConfiguration;
     QFile certFile(QStringLiteral("localhost.cert"));
     QFile keyFile(QStringLiteral("localhost.key"));
-    certFile.open(QIODevice::ReadOnly);
-    keyFile.open(QIODevice::ReadOnly);
+    if (certFile.open(QIODevice::ReadOnly))
+        certFileFound = true;
+    if (keyFile.open(QIODevice::ReadOnly))
+        keyFileFound = true;
     QSslCertificate certificate(&certFile, QSsl::Pem);
     QSslKey sslKey(&keyFile, QSsl::Rsa, QSsl::Pem);
     certFile.close();
@@ -198,6 +203,16 @@ void SslServer::onSslErrors(const QList<QSslError> &errors)
     qDebug() << "SslServer: Ssl errors occurred" << errors;
 }
 
+bool SslServer::isSslCertFileFound()
+{
+    return certFileFound;
+}
+
+bool SslServer::isSslKeyFileFound()
+{
+    return keyFileFound;
+}
+
 //==============================================
 Broker::Broker(quint16 serverPort,
                quint16 clientPort,
@@ -277,6 +292,16 @@ void Broker::stop(void)
     qDebug() << "Broker: stopped";
     server.stop();
     client.stop();
+}
+
+bool Broker::isSslCertFileFound()
+{
+    return server.isSslCertFileFound();
+}
+
+bool Broker::isSslKeyFileFound()
+{
+    return server.isSslKeyFileFound();
 }
 
 //Returns true if message is good, false otherwise

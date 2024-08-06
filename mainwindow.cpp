@@ -127,6 +127,11 @@ void MainWindow::on_pushButton_start_released()
                         client_port,
                         server_password,
                         this);
+    if (!broker->isSslCertFileFound())
+        emit log("Failed to open localhost.cert file");
+    if (!broker->isSslKeyFileFound())
+        emit log("Failed to open localhost.key file");
+
     this->server_started = broker->start();
     if (this->server_started)
     {
@@ -140,6 +145,7 @@ void MainWindow::on_pushButton_start_released()
                 this, &MainWindow::server_connected);
         connect(broker,   &Broker::server_disconnected,
                 this, &MainWindow::server_disconnected);
+        this->log("Broker started");
     }
     else
     {
