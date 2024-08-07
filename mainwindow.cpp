@@ -67,6 +67,7 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+    ui->horizontalLayout_4->setAlignment(Qt::AlignBottom);
     //Init config groupbox
     ui->lineEdit_client_port->setValidator( new QIntValidator(1, 65535, this) );
     ui->lineEdit_client_port->setText( QString::number(client_port) );
@@ -88,28 +89,6 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-void MainWindow::resizeEvent(QResizeEvent *e)
-{
-    int width = e->size().width();
-    int margin;
-    QSize size;
-
-    margin = ui->groupBox_server_config->geometry().x();
-    size = ui->groupBox_server_config->size();
-    size.setWidth(width - 2*margin);
-    ui->groupBox_server_config->resize(size);
-
-    margin = ui->plainTextEdit_logs->geometry().x();
-    size = ui->plainTextEdit_logs->size();
-    size.setWidth(width - 2*margin);
-
-    int height = e->size().height();
-    margin = ui->plainTextEdit_logs->geometry().y();
-    //Height of status bar is about 20 by default
-    size.setHeight(height - margin - 40);
-    ui->plainTextEdit_logs->resize(size);
-}
-
 void MainWindow::update_ui()
 {
     ui->lineEdit_client_port->setDisabled(server_started);
@@ -128,9 +107,9 @@ void MainWindow::on_pushButton_start_released()
                         server_password,
                         this);
     if (!broker->isSslCertFileFound())
-        emit log("Failed to open localhost.cert file");
+        this->log("Failed to open localhost.cert file");
     if (!broker->isSslKeyFileFound())
-        emit log("Failed to open localhost.key file");
+        this->log("Failed to open localhost.key file");
 
     this->server_started = broker->start();
     if (this->server_started)

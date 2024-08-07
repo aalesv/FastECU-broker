@@ -67,7 +67,6 @@ private slots:
 
 private:
     Ui::MainWindow *ui;
-    void resizeEvent(QResizeEvent *e);
     bool server_started = false;
     int server_port = 33314;
     int client_port = 33315;
