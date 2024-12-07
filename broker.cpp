@@ -33,6 +33,7 @@ SslServer::SslServer(quint16 port, QString allowedPath, QObject *parent)
     , port(port)
     , pWebSocketServer(nullptr)
     , allowedPath(allowedPath)
+    , keepalive_timer(new QTimer(this))
 {
     certFileFound = false;
     keyFileFound = false;
@@ -56,6 +57,11 @@ SslServer::SslServer(quint16 port, QString allowedPath, QObject *parent)
     sslConfiguration.setPrivateKey(sslKey);
     pWebSocketServer->setSslConfiguration(sslConfiguration);
     pWebSocketServer->setMaxPendingConnections(1);
+
+    connect(this, &SslServer::peerConnected, this, &SslServer::start_keepalive);
+    connect(this, &SslServer::peerDisconnected, this, &SslServer::stop_keepalive);
+
+    connect(keepalive_timer, &QTimer::timeout, this, &SslServer::send_keepalive);
 }
 
 SslServer::~SslServer()
@@ -132,7 +138,44 @@ void SslServer::onNewConnection()
             this, &SslServer::socketDisconnected, Qt::DirectConnection);
 
     peer = pSocket;
+    pings_sequently_missed = 0;
+    connect(peer, &QWebSocket::pong, this, &SslServer::pong);
     emit peerConnected("");
+}
+
+void SslServer::start_keepalive()
+{
+    keepalive_timer->start(keepalive_interval);
+}
+
+void SslServer::send_keepalive()
+{
+    ping();
+}
+
+void SslServer::stop_keepalive()
+{
+    keepalive_timer->stop();
+}
+
+void SslServer::ping(const QByteArray &payload)
+{
+    if (pings_sequently_missed == pings_sequently_missed_limit)
+    {
+        qDebug() << "Missed keepalives limit exceeded. Assume the client is disconnected.";
+        emit log("Missed keepalives limit exceeded. Assume the client is disconnected.");
+        if (peer)
+            peer->close();
+        return;
+    }
+
+    peer->ping(payload);
+    pings_sequently_missed++;
+}
+
+void SslServer::pong(quint64 elapsedTime, const QByteArray &payload)
+{
+    pings_sequently_missed = 0;
 }
 
 //Message is received from network, send it to broker

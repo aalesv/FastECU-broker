@@ -6,6 +6,7 @@
 #include <QtCore/QList>
 #include <QtCore/QByteArray>
 #include <QtNetwork/QSslError>
+#include <QTimer>
 
 QT_FORWARD_DECLARE_CLASS(QWebSocketServer)
 QT_FORWARD_DECLARE_CLASS(QWebSocket)
@@ -53,6 +54,18 @@ private:
     QWebSocket * peer = nullptr;
     //Allow to connect only at '/allowedPath' URL
     QString allowedPath = "";
+
+    int keepalive_interval = 5000;
+    QTimer *keepalive_timer;
+    int pings_sequently_missed = 0;
+    int pings_sequently_missed_limit = 12;
+    void ping(const QByteArray &payload = QByteArray());
+
+private slots:
+    void start_keepalive();
+    void stop_keepalive();
+    void send_keepalive();
+    void pong(quint64 elapsedTime, const QByteArray &payload);
 };
 
 class Broker : public QObject
