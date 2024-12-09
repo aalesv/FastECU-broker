@@ -11,9 +11,8 @@
 QT_FORWARD_DECLARE_CLASS(QWebSocketServer)
 QT_FORWARD_DECLARE_CLASS(QWebSocket)
 
-//Provide 1 connection on a specified port
-//Websocket ovet SSL
-//With callback when data is received
+//Provides 1 connection on a specified port
+//Websocket over SSL
 class SslServer : public QObject
 {
     Q_OBJECT
@@ -57,6 +56,7 @@ private:
 
     int keepalive_interval = 5000;
     QTimer *keepalive_timer;
+    int keepalive_payload_pos = 0;
     int pings_sequently_missed = 0;
     int pings_sequently_missed_limit = 12;
     void ping(const QByteArray &payload = QByteArray());
@@ -68,6 +68,8 @@ private slots:
     void pong(quint64 elapsedTime, const QByteArray &payload);
 };
 
+//Provides 2 websocket servers over SSL
+//and message passing between two peers.
 class Broker : public QObject
 {
     Q_OBJECT

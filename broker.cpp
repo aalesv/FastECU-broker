@@ -148,17 +148,10 @@ void SslServer::start_keepalive()
     keepalive_timer->start(keepalive_interval);
 }
 
+static const QByteArray keepalive_payload = QByteArray::fromHex("5468757320646F20776520696E766F6B6520746865204D616368696E6520476F642E205468757320646F207765206D616B652077686F6C652074686174207768696368207761732073756E64657265642E");
+static const int keepalive_palyload_len = keepalive_payload.length();
+
 void SslServer::send_keepalive()
-{
-    ping();
-}
-
-void SslServer::stop_keepalive()
-{
-    keepalive_timer->stop();
-}
-
-void SslServer::ping(const QByteArray &payload)
 {
     if (pings_sequently_missed == pings_sequently_missed_limit)
     {
@@ -168,9 +161,25 @@ void SslServer::ping(const QByteArray &payload)
             peer->close();
         return;
     }
-
-    peer->ping(payload);
+    QByteArray payload;
+    if (keepalive_palyload_len > 0)
+    {
+        payload.append(keepalive_payload[keepalive_payload_pos]);
+        //From 0 to keepalive payload length
+        keepalive_payload_pos = (keepalive_payload_pos + 1) % keepalive_palyload_len;
+    }
+    ping(payload);
     pings_sequently_missed++;
+}
+
+void SslServer::stop_keepalive()
+{
+    keepalive_timer->stop();
+}
+
+void SslServer::ping(const QByteArray &payload)
+{
+    peer->ping(payload);
 }
 
 void SslServer::pong(quint64 elapsedTime, const QByteArray &payload)
@@ -181,11 +190,11 @@ void SslServer::pong(quint64 elapsedTime, const QByteArray &payload)
 //Message is received from network, send it to broker
 void SslServer::processTextMessage(QString message)
 {
-    qDebug() << "SslServer: Peer sent text message";
+    //qDebug() << "SslServer: Peer sent text message";
     QWebSocket *pClient = qobject_cast<QWebSocket *>(sender());
     if (pClient !=nullptr)
     {
-        qDebug() << "SslServer: Sending message to broker";
+        //qDebug() << "SslServer: Sending message to broker";
         emit sendTextMessageToBroker(message);
     }
 }
@@ -193,11 +202,11 @@ void SslServer::processTextMessage(QString message)
 //Message is received from network, send it to broker
 void SslServer::processBinaryMessage(QByteArray message)
 {
-    qDebug() << "SslServer: Peer sent binary message";
+    //qDebug() << "SslServer: Peer sent binary message";
     QWebSocket *pClient = qobject_cast<QWebSocket *>(sender());
     if (pClient !=nullptr)
     {
-        qDebug() << "SslServer: Sending message to broker";
+        //qDebug() << "SslServer: Sending message to broker";
         emit sendBinaryMessageToBroker(message);
     }
 }
@@ -205,10 +214,10 @@ void SslServer::processBinaryMessage(QByteArray message)
 //Message is receiver from broker, send it to network
 void SslServer::receiveTextMessageFromBroker(QString message)
 {
-    qDebug() << "SslServer: Received text message from broker";
+    //qDebug() << "SslServer: Received text message from broker";
     if (peer != nullptr)
     {
-        qDebug() << "SslServer: Sending text message to peer";
+        //qDebug() << "SslServer: Sending text message to peer";
         peer->sendTextMessage(message);
     }
 }
@@ -216,10 +225,10 @@ void SslServer::receiveTextMessageFromBroker(QString message)
 //Message is receiver from broker, send it to network
 void SslServer::receiveBinaryMessageFromBroker(QByteArray &message)
 {
-    qDebug() << "SslServer: Received binary message from broker";
+    //qDebug() << "SslServer: Received binary message from broker";
     if (peer != nullptr)
     {
-        qDebug() << "SslServer: Sending binary message to peer";
+        //qDebug() << "SslServer: Sending binary message to peer";
         peer->sendBinaryMessage(message);
     }
 }
@@ -357,35 +366,35 @@ bool Broker::passClientTextMessage(QString &message)
 
 void Broker::receiveTextMessageFromSslServer(QString message)
 {
-    qDebug() << "Broker: received text message from server";
-    qDebug() << "Broker: sending text message to client";
+    //qDebug() << "Broker: received text message from server";
+    //qDebug() << "Broker: sending text message to client";
     emit sendTextMessageToSslClient(message);
 }
 
 void Broker::receiveTextMessageFromSslClient(QString message)
 {
-    qDebug() << "Broker: received text message from client";
+    //qDebug() << "Broker: received text message from client";
     if (passClientTextMessage(message))
     {
-        qDebug() << "Broker: sending text message to server";
+        //qDebug() << "Broker: sending text message to server";
         emit sendTextMessageToSslServer(message);
     }
     else
     {
-        qDebug() << "Broker: message filtered";
+        qDebug() << "Broker: text message" << message << "filtered";
     }
 }
 
 void Broker::receiveBinaryMessageFromSslServer(QByteArray &message)
 {
-    qDebug() << "Broker: received binary message from server";
-    qDebug() << "Broker: sending binary message to client";
+    //qDebug() << "Broker: received binary message from server";
+    //qDebug() << "Broker: sending binary message to client";
     emit sendBinaryMessageToSslClient(message);
 }
 
 void Broker::receiveBinaryMessageFromSslClient(QByteArray &message)
 {
-    qDebug() << "Broker: received binary message from client";
-    qDebug() << "Broker: sending binary message to server";
+    //qDebug() << "Broker: received binary message from client";
+    //qDebug() << "Broker: sending binary message to server";
     emit sendBinaryMessageToSslServer(message);
 }
