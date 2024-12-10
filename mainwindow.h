@@ -65,11 +65,14 @@ private slots:
 
     void on_lineEdit_server_password_textChanged(const QString &arg1);
 
+    void on_checkBox_enable_keepalives_stateChanged(int arg1);
+
 private:
     Ui::MainWindow *ui;
     bool server_started = false;
     int server_port = 33314;
     int client_port = 33315;
+    bool keepalive_enabled = false;
     QString server_password =
         QString::number(QRandomGenerator::global()->bounded(1111, 9999));
     Broker *broker = nullptr;

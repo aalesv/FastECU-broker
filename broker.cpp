@@ -145,7 +145,17 @@ void SslServer::onNewConnection()
 
 void SslServer::start_keepalive()
 {
-    keepalive_timer->start(keepalive_interval);
+    if (peer != nullptr &&
+        keepalive_interval > 0 &&
+        !keepalive_timer->isActive())
+    {
+        qDebug() << "Starting keepalives";
+        keepalive_timer->start(keepalive_interval);
+    }
+    else
+    {
+        qDebug() << "Cannot start keepalive.";
+    }
 }
 
 static const QByteArray keepalive_payload = QByteArray::fromHex("5468757320646F20776520696E766F6B6520746865204D616368696E6520476F642E205468757320646F207765206D616B652077686F6C652074686174207768696368207761732073756E64657265642E");
@@ -285,6 +295,11 @@ Broker::Broker(quint16 serverPort,
     , server(SslServer(serverPort, server_password, this))
     , client(SslServer(clientPort, this))
 {
+    int k_int = 0;
+    if (keepalive_enabled)
+        k_int = keepalive_interval;
+    server.set_keepalive_interval(k_int);
+    client.set_keepalive_interval(k_int);
     //Connect to log signals and chain them
     connect(&server, &SslServer::log, this, &Broker::log, Qt::QueuedConnection);
     connect(&client, &SslServer::log, this, &Broker::log, Qt::QueuedConnection);
@@ -397,4 +412,32 @@ void Broker::receiveBinaryMessageFromSslClient(QByteArray &message)
     //qDebug() << "Broker: received binary message from client";
     //qDebug() << "Broker: sending binary message to server";
     emit sendBinaryMessageToSslServer(message);
+}
+
+void Broker::set_keepalive_interval(int ms)
+{
+    keepalive_interval = ms;
+    server.set_keepalive_interval(ms);
+    client.set_keepalive_interval(ms);
+}
+
+void Broker::enable_keepalive(bool enable)
+{
+    keepalive_enabled = enable;
+    if (enable)
+    {
+        qDebug() << "Enabling keepalives";
+        server.set_keepalive_interval(keepalive_interval);
+        client.set_keepalive_interval(keepalive_interval);
+        server.start_keepalive();
+        client.start_keepalive();
+    }
+    else
+    {
+        qDebug() << "Disabling keepalives";
+        server.stop_keepalive();
+        client.stop_keepalive();
+        server.set_keepalive_interval(0);
+        client.set_keepalive_interval(0);
+    }
 }

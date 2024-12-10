@@ -81,6 +81,8 @@ MainWindow::MainWindow(QWidget *parent)
     server_status_label->setOff(true);
     client_status_label->setOff(true);
 
+    keepalive_enabled = ui->checkBox_enable_keepalives->isChecked();
+
     this->update_ui();
 }
 
@@ -111,6 +113,7 @@ void MainWindow::on_pushButton_start_released()
     if (!broker->isSslKeyFileFound())
         this->log("Failed to open localhost.key file");
 
+    broker->enable_keepalive(keepalive_enabled);
     this->server_started = broker->start();
     if (this->server_started)
     {
@@ -138,6 +141,7 @@ void MainWindow::on_pushButton_stop_released()
 {
     this->log("Stopping broker");
     delete broker;
+    broker = nullptr;
     this->server_started = false;
     this->update_ui();
     //Signals could be lost, set status manually
@@ -180,5 +184,13 @@ void MainWindow::client_disconnected(QString message)
 void MainWindow::on_lineEdit_server_password_textChanged(const QString &arg1)
 {
     server_password = arg1;
+}
+
+
+void MainWindow::on_checkBox_enable_keepalives_stateChanged(int arg1)
+{
+    keepalive_enabled = arg1;
+    if (server_started)
+        broker->enable_keepalive(keepalive_enabled);
 }
 

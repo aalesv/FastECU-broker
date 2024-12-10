@@ -36,6 +36,9 @@ public slots:
     void stop(void);
     void receiveTextMessageFromBroker(QString message);
     void receiveBinaryMessageFromBroker(QByteArray &message);
+    void set_keepalive_interval(int ms) { keepalive_interval = ms; }
+    void start_keepalive();
+    void stop_keepalive();
 
 signals:
     void log(QString message);
@@ -54,7 +57,7 @@ private:
     //Allow to connect only at '/allowedPath' URL
     QString allowedPath = "";
 
-    int keepalive_interval = 5000;
+    int keepalive_interval = 0;
     QTimer *keepalive_timer;
     int keepalive_payload_pos = 0;
     int pings_sequently_missed = 0;
@@ -62,8 +65,6 @@ private:
     void ping(const QByteArray &payload = QByteArray());
 
 private slots:
-    void start_keepalive();
-    void stop_keepalive();
     void send_keepalive();
     void pong(quint64 elapsedTime, const QByteArray &payload);
 };
@@ -105,6 +106,8 @@ public slots:
     void receiveBinaryMessageFromSslServer(QByteArray &message);
     void receiveTextMessageFromSslClient(QString message);
     void receiveBinaryMessageFromSslClient(QByteArray &message);
+    void enable_keepalive(bool enable);
+    void set_keepalive_interval(int ms);
 
 private:
     quint16 serverPort;
@@ -112,6 +115,8 @@ private:
     QString server_password = "";
     SslServer server;
     SslServer client;
+    int keepalive_interval = 5000;
+    bool keepalive_enabled = false;
     bool passClientTextMessage(QString &message);
 };
 #endif // BROKER_H
