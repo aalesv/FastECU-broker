@@ -149,12 +149,12 @@ void SslServer::start_keepalive()
         keepalive_interval > 0 &&
         !keepalive_timer->isActive())
     {
-        qDebug() << "Starting keepalives";
+        qDebug() << "SslServer: Starting keepalives";
         keepalive_timer->start(keepalive_interval);
     }
     else
     {
-        qDebug() << "Cannot start keepalive.";
+        qDebug() << "SslServer: Cannot start keepalive.";
     }
 }
 
@@ -184,6 +184,7 @@ void SslServer::send_keepalive()
 
 void SslServer::stop_keepalive()
 {
+    qDebug() << "SslServer: stopping keepalives";
     keepalive_timer->stop();
 }
 
@@ -345,6 +346,7 @@ bool Broker::start(void)
     if (r)
     {
         qDebug() << "Broker: started";
+        emit started();
     }
     else
     {
@@ -359,6 +361,7 @@ void Broker::stop(void)
     qDebug() << "Broker: stopped";
     server.stop();
     client.stop();
+    emit stopped();
 }
 
 bool Broker::isSslCertFileFound()
@@ -440,4 +443,58 @@ void Broker::enable_keepalive(bool enable)
         server.set_keepalive_interval(0);
         client.set_keepalive_interval(0);
     }
+}
+
+BrokerWrapper::BrokerWrapper(quint16 serverPort,
+                             quint16 clientPort,
+                             QString server_password,
+                             QObject *parent)
+    : broker(new Broker(serverPort, clientPort, server_password, this))
+{
+    connect(broker, &Broker::log, this, &BrokerWrapper::log, Qt::QueuedConnection);
+    connect(broker, &Broker::client_connected, this, &BrokerWrapper::client_connected, Qt::QueuedConnection);
+    connect(broker, &Broker::client_disconnected, this, &BrokerWrapper::client_disconnected, Qt::QueuedConnection);
+    connect(broker, &Broker::server_connected, this, &BrokerWrapper::server_connected, Qt::QueuedConnection);
+    connect(broker, &Broker::server_disconnected, this, &BrokerWrapper::server_disconnected, Qt::QueuedConnection);
+    connect(broker, &Broker::started, this, &BrokerWrapper::started, Qt::QueuedConnection);
+    connect(broker, &Broker::stopped, this, &BrokerWrapper::stopped, Qt::QueuedConnection);
+
+    connect(this, &BrokerWrapper::enable_keepalive, this, &BrokerWrapper::set_keepalive);
+    connect(this, &BrokerWrapper::start, this, &BrokerWrapper::start_broker);
+    connect(this, &BrokerWrapper::stop, this, &BrokerWrapper::stop_broker, Qt::DirectConnection);
+}
+
+BrokerWrapper::~BrokerWrapper()
+{
+    broker->stop();
+    broker->deleteLater();
+}
+
+bool BrokerWrapper::isSslCertFileFound()
+{
+    return broker->isSslCertFileFound();
+}
+
+bool BrokerWrapper::isSslKeyFileFound()
+{
+    return broker->isSslKeyFileFound();
+}
+
+void BrokerWrapper::set_keepalive(bool enable)
+{
+    broker->enable_keepalive(enable);
+}
+
+void BrokerWrapper::start_broker()
+{
+    if (!broker->isSslCertFileFound())
+        emit log("Failed to open localhost.cert file");
+    if (!broker->isSslKeyFileFound())
+        emit log("Failed to open localhost.key file");
+    broker->start();
+}
+
+void BrokerWrapper::stop_broker()
+{
+    broker->stop();
 }

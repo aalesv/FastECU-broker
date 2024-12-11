@@ -5,6 +5,7 @@
 #include <QLabel>
 #include <QRandomGenerator>
 #include "broker.h"
+#include <QThread>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -62,6 +63,8 @@ private slots:
     void server_disconnected(QString message);
     void client_connected(QString message);
     void client_disconnected(QString message);
+    void started();
+    void stopped();
 
     void on_lineEdit_server_password_textChanged(const QString &arg1);
 
@@ -73,9 +76,10 @@ private:
     int server_port = 33314;
     int client_port = 33315;
     bool keepalive_enabled = false;
+    QThread broker_thread;
     QString server_password =
         QString::number(QRandomGenerator::global()->bounded(1111, 9999));
-    Broker *broker = nullptr;
+    BrokerWrapper *broker = nullptr;
     QSharedPointer<OnOffLabel> broker_status_label =
         QSharedPointer<OnOffLabel>(
             new OnOffLabel("icons/broker_status_on.png",

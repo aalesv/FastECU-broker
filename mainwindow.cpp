@@ -7,6 +7,7 @@
 #include <QtGui/QIntValidator>
 #include <chrono>
 #include <QDateTime>
+#include <QDebug>
 
 QString now()
 {
@@ -101,46 +102,48 @@ void MainWindow::update_ui()
     broker_status_label->setOn(server_started);
 }
 
+void MainWindow::started()
+{
+    this->server_started = true;
+    this->update_ui();
+    connect(broker, &BrokerWrapper::log, this, &MainWindow::log, Qt::QueuedConnection);
+    connect(broker,   &BrokerWrapper::client_connected,
+            this, &MainWindow::client_connected);
+    connect(broker,   &BrokerWrapper::client_disconnected,
+            this, &MainWindow::client_disconnected);
+    connect(broker,   &BrokerWrapper::server_connected,
+            this, &MainWindow::server_connected);
+    connect(broker,   &BrokerWrapper::server_disconnected,
+            this, &MainWindow::server_disconnected);
+    this->log("Broker started");
+}
+
+void MainWindow::stopped()
+{
+    this->server_started = false;
+    this->log("Broker stopped");
+}
+
 void MainWindow::on_pushButton_start_released()
 {
     this->log("Starting broker");
-    broker = new Broker(server_port,
+    broker_thread.start();
+    broker = new BrokerWrapper(server_port,
                         client_port,
-                        server_password,
-                        this);
-    if (!broker->isSslCertFileFound())
-        this->log("Failed to open localhost.cert file");
-    if (!broker->isSslKeyFileFound())
-        this->log("Failed to open localhost.key file");
-
-    broker->enable_keepalive(keepalive_enabled);
-    this->server_started = broker->start();
-    if (this->server_started)
-    {
-        this->update_ui();
-        connect(broker, &Broker::log, this, &MainWindow::log, Qt::QueuedConnection);
-        connect(broker,   &Broker::client_connected,
-                this, &MainWindow::client_connected);
-        connect(broker,   &Broker::client_disconnected,
-                this, &MainWindow::client_disconnected);
-        connect(broker,   &Broker::server_connected,
-                this, &MainWindow::server_connected);
-        connect(broker,   &Broker::server_disconnected,
-                this, &MainWindow::server_disconnected);
-        this->log("Broker started");
-    }
-    else
-    {
-        this->log("Failed to start broker");
-        broker->deleteLater();
-    }
+                        server_password);
+    connect(&broker_thread, &QThread::finished, broker, [this](){ this->broker->deleteLater(); });
+    broker->moveToThread(&broker_thread);
+    emit broker->enable_keepalive(keepalive_enabled);
+    emit broker->start();
+    connect(broker, &BrokerWrapper::started, this, &MainWindow::started, Qt::QueuedConnection);
+    connect(broker, &BrokerWrapper::stopped, this, &MainWindow::stopped, Qt::QueuedConnection);
 }
-
 
 void MainWindow::on_pushButton_stop_released()
 {
     this->log("Stopping broker");
-    delete broker;
+    broker_thread.exit();
+    broker_thread.wait();
     broker = nullptr;
     this->server_started = false;
     this->update_ui();
