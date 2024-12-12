@@ -79,7 +79,7 @@ private:
     QThread broker_thread;
     QString server_password =
         QString::number(QRandomGenerator::global()->bounded(1111, 9999));
-    BrokerWrapper *broker = nullptr;
+    Broker *broker = nullptr;
     QSharedPointer<OnOffLabel> broker_status_label =
         QSharedPointer<OnOffLabel>(
             new OnOffLabel("icons/broker_status_on.png",

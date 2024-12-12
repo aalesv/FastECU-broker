@@ -106,14 +106,14 @@ void MainWindow::started()
 {
     this->server_started = true;
     this->update_ui();
-    connect(broker, &BrokerWrapper::log, this, &MainWindow::log, Qt::QueuedConnection);
-    connect(broker,   &BrokerWrapper::client_connected,
+    connect(broker, &Broker::log, this, &MainWindow::log, Qt::QueuedConnection);
+    connect(broker,   &Broker::client_connected,
             this, &MainWindow::client_connected);
-    connect(broker,   &BrokerWrapper::client_disconnected,
+    connect(broker,   &Broker::client_disconnected,
             this, &MainWindow::client_disconnected);
-    connect(broker,   &BrokerWrapper::server_connected,
+    connect(broker,   &Broker::server_connected,
             this, &MainWindow::server_connected);
-    connect(broker,   &BrokerWrapper::server_disconnected,
+    connect(broker,   &Broker::server_disconnected,
             this, &MainWindow::server_disconnected);
     this->log("Broker started");
 }
@@ -128,15 +128,15 @@ void MainWindow::on_pushButton_start_released()
 {
     this->log("Starting broker");
     broker_thread.start();
-    broker = new BrokerWrapper(server_port,
+    broker = new Broker(server_port,
                         client_port,
                         server_password);
     connect(&broker_thread, &QThread::finished, broker, [this](){ this->broker->deleteLater(); });
     broker->moveToThread(&broker_thread);
-    emit broker->enable_keepalive(keepalive_enabled);
+    emit broker->enableKeepalive(keepalive_enabled);
     emit broker->start();
-    connect(broker, &BrokerWrapper::started, this, &MainWindow::started, Qt::QueuedConnection);
-    connect(broker, &BrokerWrapper::stopped, this, &MainWindow::stopped, Qt::QueuedConnection);
+    connect(broker, &Broker::started, this, &MainWindow::started, Qt::QueuedConnection);
+    connect(broker, &Broker::stopped, this, &MainWindow::stopped, Qt::QueuedConnection);
 }
 
 void MainWindow::on_pushButton_stop_released()
@@ -194,6 +194,6 @@ void MainWindow::on_checkBox_enable_keepalives_stateChanged(int arg1)
 {
     keepalive_enabled = arg1;
     if (server_started)
-        broker->enable_keepalive(keepalive_enabled);
+        broker->enableKeepalive(keepalive_enabled);
 }
 

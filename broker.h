@@ -11,19 +11,19 @@
 
 //Provides 2 websocket servers over SSL
 //and message passing between two peers.
-class Broker : public QObject
+class BrokerHelper : public QObject
 {
     Q_OBJECT
 public:
-    explicit Broker(quint16 serverPort,
+    explicit BrokerHelper(quint16 serverPort,
                     quint16 clientPort,
                     QObject *parent = nullptr);
 
-    explicit Broker(quint16 serverPort,
+    explicit BrokerHelper(quint16 serverPort,
                     quint16 clientPort,
                     QString server_password,
                     QObject *parent = nullptr);
-    ~Broker() override;
+    ~BrokerHelper() override;
 
     bool isSslCertFileFound();
     bool isSslKeyFileFound();
@@ -50,32 +50,31 @@ public slots:
     void receiveBinaryMessageFromSslClient(QByteArray &message);
     void enable_keepalive(bool enable);
     void set_keepalive_interval(int ms);
+    void set_keepalive_missed_limit(int limit);
 
 private:
     quint16 serverPort;
     quint16 clientPort;
     QString server_password = "";
-    SslServer server;
-    SslServer client;
+    SslServer *server;
+    SslServer *client;
     int keepalive_interval = 5000;
+    int keepalive_missed_limit = 12;
     bool keepalive_enabled = false;
     bool passClientTextMessage(QString &message);
 };
 
-class BrokerWrapper : public QObject
+class Broker : public QObject
 {
     Q_OBJECT
 private:
-    Broker *broker;
+    BrokerHelper *broker;
 public:
-    BrokerWrapper(quint16 serverPort,
+    Broker(quint16 serverPort,
                   quint16 clientPort,
                   QString server_password,
                   QObject *parent = nullptr);
-    ~BrokerWrapper() override;
-
-    bool isSslCertFileFound();
-    bool isSslKeyFileFound();
+    ~Broker() override;
 
 signals:
     void log(QString message);
@@ -88,14 +87,20 @@ signals:
     void client_connected(QString message);
     void client_disconnected(QString message);
 
-    void enable_keepalive(bool enable);
+    void enableKeepalive(bool enable);
+    void setKeepaliveInterval(int interval);
+    void setKeepaliveMissedLimit(int limit);
     void start();
     void started();
     void stop();
     void stopped();
 
 private slots:
-    void set_keepalive(bool enable);
+    bool isSslCertFileFound();
+    bool isSslKeyFileFound();
+    void enable_keepalive(bool enable);
+    void set_keepalive_interval(int interval);
+    void set_keepalive_missed_limit(int limit);
     void start_broker();
     void stop_broker();
 
