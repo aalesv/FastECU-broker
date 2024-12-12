@@ -75,6 +75,8 @@ private:
     bool server_started = false;
     int server_port = 33314;
     int client_port = 33315;
+    int keepalive_interval = 5000;
+    int keepalive_missed_limit = 12;
     bool keepalive_enabled = false;
     QThread broker_thread;
     QString server_password =

@@ -41,15 +41,19 @@ public slots:
     void set_keepalive_interval(int ms) { keepalive_interval = ms; }
     void set_keepalive_missed_limit(int limit) { pings_sequently_missed_limit = limit; }
     void set_server_name(QString name) { server_name = name; }
+    void enable_keepalive(bool enable);
     void start_keepalive();
     void stop_keepalive();
 
 signals:
+    void enableKeepailve(bool enable);
     void log(QString message);
     void sendTextMessageToBroker(QString message);
     void sendBinaryMessageToBroker(QByteArray &message);
     void peerConnected(QString message);
     void peerDisconnected(QString message);
+    void started();
+    void stopped();
 
 private:
     bool certFileFound = false;
@@ -62,6 +66,7 @@ private:
     QString allowedPath = "";
     QString server_name = "SslServer:";
 
+    bool keepalive_enabled = false;
     int keepalive_interval = 0;
     QTimer *keepalive_timer;
     int keepalive_payload_pos = 0;
@@ -80,6 +85,7 @@ class SslServer : public QObject
 private:
     SslServerHelper *server;
     void enable_keepalive(bool enable);
+    bool keepalive_enabled = false;
 
 public:
     explicit SslServer(quint16 port, QString allowedPath = "", QObject *parent = nullptr);
@@ -98,6 +104,8 @@ signals:
     void setKeepaliveInterval(int interval);
     void setKeepaliveMissedLimit(int limit);
     void start(void);
+    void started(void);
     void stop(void);
+    void stopped(void);
 };
 #endif // SSLSERVER_H

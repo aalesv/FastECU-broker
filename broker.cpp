@@ -22,48 +22,10 @@ BrokerHelper::BrokerHelper(quint16 serverPort,
                QString server_password,
                QObject *parent)
     : QObject(parent)
+    , server_password(server_password)
     , serverPort(serverPort)
     , clientPort(clientPort)
-    , server(new SslServer(serverPort, server_password))
-    , client(new SslServer(clientPort))
 {
-    int k_int = 0;
-    if (keepalive_enabled)
-        k_int = keepalive_interval;
-    emit server->setKeepaliveInterval(k_int);
-    emit client->setKeepaliveInterval(k_int);
-    //Connect to log signals and chain them
-    connect(server, &SslServer::log, this, &BrokerHelper::log, Qt::QueuedConnection);
-    connect(client, &SslServer::log, this, &BrokerHelper::log, Qt::QueuedConnection);
-    //Connect to client and server connect/disconnect signals
-    connect(server, &SslServer::peerConnected,
-            this, &BrokerHelper::server_connected, Qt::QueuedConnection);
-    connect(server, &SslServer::peerDisconnected,
-            this, &BrokerHelper::server_disconnected, Qt::QueuedConnection);
-    connect(client, &SslServer::peerConnected,
-            this, &BrokerHelper::client_connected, Qt::QueuedConnection);
-    connect(client, &SslServer::peerDisconnected,
-            this, &BrokerHelper::client_disconnected, Qt::QueuedConnection);
-    //Connect to send/receive signals
-    connect(server, &SslServer::sendTextMessageToBroker,
-            this, &BrokerHelper::receiveTextMessageFromSslServer, Qt::DirectConnection);
-    connect(client, &SslServer::sendTextMessageToBroker,
-            this, &BrokerHelper::receiveTextMessageFromSslClient, Qt::DirectConnection);
-
-    connect(server, &SslServer::sendBinaryMessageToBroker,
-            this, &BrokerHelper::receiveBinaryMessageFromSslServer, Qt::DirectConnection);
-    connect(client, &SslServer::sendBinaryMessageToBroker,
-            this, &BrokerHelper::receiveBinaryMessageFromSslClient, Qt::DirectConnection);
-
-    connect(this, &BrokerHelper::sendTextMessageToSslServer,
-            server, &SslServer::receiveTextMessageFromBroker, Qt::DirectConnection);
-    connect(this, &BrokerHelper::sendTextMessageToSslClient,
-            client, &SslServer::receiveTextMessageFromBroker, Qt::DirectConnection);
-
-    connect(this, &BrokerHelper::sendBinaryMessageToSslServer,
-            server, &SslServer::receiveBinaryMessageFromBroker, Qt::DirectConnection);
-    connect(this, &BrokerHelper::sendBinaryMessageToSslClient,
-            client, &SslServer::receiveBinaryMessageFromBroker, Qt::DirectConnection);
 }
 
 BrokerHelper::~BrokerHelper()
@@ -73,6 +35,19 @@ BrokerHelper::~BrokerHelper()
 
 bool BrokerHelper::start(void)
 {
+    qDebug() << Q_FUNC_INFO << QThread::currentThread();
+    server_thread.start();
+    server = new SslServer(serverPort, server_password);
+    connect(&server_thread, &QThread::finished, server, [this](){ this->server->deleteLater(); });
+    connect(server, &SslServer::started, this, &BrokerHelper::ssl_server_started, Qt::QueuedConnection);
+    server->moveToThread(&server_thread);
+
+    client_thread.start();
+    client = new SslServer(clientPort);
+    connect(&client_thread, &QThread::finished, client, [this](){ this->client->deleteLater(); });
+    connect(client, &SslServer::started, this, &BrokerHelper::ssl_client_started, Qt::QueuedConnection);
+    client->moveToThread(&client_thread);
+
     emit server->setServerName("Server:");
     emit server->start();
     emit client->setServerName("Client:");
@@ -81,11 +56,62 @@ bool BrokerHelper::start(void)
     return true;
 }
 
+void BrokerHelper::ssl_server_started()
+{
+    SslServer *srv = qobject_cast<SslServer *>(sender());
+    emit srv->setKeepaliveInterval(keepalive_interval);
+    //Connect to log signals and chain them
+    connect(srv, &SslServer::log, this, &BrokerHelper::log, Qt::QueuedConnection);
+    //Connect to connect/disconnect signals
+    connect(srv,     &SslServer::peerConnected,
+            this, &BrokerHelper::server_connected, Qt::QueuedConnection);
+    connect(srv,     &SslServer::peerDisconnected,
+            this, &BrokerHelper::server_disconnected, Qt::QueuedConnection);
+    //Connect to send/receive signals
+    connect(srv,     &SslServer::sendTextMessageToBroker,
+            this, &BrokerHelper::receiveTextMessageFromSslServer, Qt::DirectConnection);
+    connect(srv,     &SslServer::sendBinaryMessageToBroker,
+            this, &BrokerHelper::receiveBinaryMessageFromSslServer, Qt::DirectConnection);
+    connect(this, &BrokerHelper::sendTextMessageToSslServer,
+            srv,     &SslServer::receiveTextMessageFromBroker, Qt::DirectConnection);
+    connect(this, &BrokerHelper::sendBinaryMessageToSslServer,
+            srv,     &SslServer::receiveBinaryMessageFromBroker, Qt::DirectConnection);
+
+}
+
+void BrokerHelper::ssl_client_started()
+{
+    SslServer *clt = qobject_cast<SslServer *>(sender());
+    emit clt->setKeepaliveInterval(keepalive_interval);
+    //Connect to log signals and chain them
+    connect(client, &SslServer::log, this, &BrokerHelper::log, Qt::QueuedConnection);
+    //Connect to connect/disconnect signals
+    connect(clt,     &SslServer::peerConnected,
+            this, &BrokerHelper::client_connected, Qt::QueuedConnection);
+    connect(clt,     &SslServer::peerDisconnected,
+            this, &BrokerHelper::client_disconnected, Qt::QueuedConnection);
+    //Connect to send/receive signals
+    connect(clt,     &SslServer::sendTextMessageToBroker,
+            this, &BrokerHelper::receiveTextMessageFromSslClient, Qt::DirectConnection);
+    connect(clt,     &SslServer::sendBinaryMessageToBroker,
+            this, &BrokerHelper::receiveBinaryMessageFromSslClient, Qt::DirectConnection);
+    connect(this, &BrokerHelper::sendTextMessageToSslClient,
+            clt,     &SslServer::receiveTextMessageFromBroker, Qt::DirectConnection);
+    connect(this, &BrokerHelper::sendBinaryMessageToSslClient,
+            clt,     &SslServer::receiveBinaryMessageFromBroker, Qt::DirectConnection);
+}
+
 void BrokerHelper::stop(void)
 {
     qDebug() << "Broker: stopped";
-    emit server->stop();
-    emit client->stop();
+    server_thread.exit();
+    server_thread.wait();
+    server = nullptr;
+
+    client_thread.exit();
+    client_thread.wait();
+    client = nullptr;
+
     emit stopped();
 }
 
@@ -114,7 +140,7 @@ void BrokerHelper::receiveTextMessageFromSslClient(QString message)
     }
     else
     {
-        qDebug() << "Broker: text message" << message << "filtered";
+        //qDebug() << "Broker: text message" << message << "filtered";
     }
 }
 
@@ -135,33 +161,33 @@ void BrokerHelper::receiveBinaryMessageFromSslClient(QByteArray &message)
 void BrokerHelper::set_keepalive_interval(int ms)
 {
     keepalive_interval = ms;
-    emit server->setKeepaliveInterval(ms);
-    emit client->setKeepaliveInterval(ms);
+    if (server != nullptr)
+        emit server->setKeepaliveInterval(ms);
+    if (client != nullptr)
+        emit client->setKeepaliveInterval(ms);
 }
 
 void BrokerHelper::enable_keepalive(bool enable)
 {
+    auto setup_keepalive = [](SslServer *s,
+                              bool enable,
+                              int keepalive_interval,
+                              int keepalive_missed_limit)
+    {
+        emit s->setKeepaliveInterval(keepalive_interval);
+        emit s->setKeepaliveMissedLimit(keepalive_missed_limit);
+        emit s->enableKeepalive(enable);
+    };
+
     keepalive_enabled = enable;
-    /*if (enable)
+    if (server != nullptr)
     {
-        qDebug() << "Enabling keepalives";
-        server->set_keepalive_interval(keepalive_interval);
-        client->set_keepalive_interval(keepalive_interval);
-        server->start_keepalive();
-        client->start_keepalive();
+        setup_keepalive(server, enable, keepalive_interval, keepalive_missed_limit);
     }
-    else
+    if (client != nullptr)
     {
-        qDebug() << "Disabling keepalives";
-        server->stop_keepalive();
-        client->stop_keepalive();
-        server->set_keepalive_interval(0);
-        client->set_keepalive_interval(0);
-    }*/
-    emit server->setKeepaliveInterval(keepalive_interval);
-    emit client->setKeepaliveInterval(keepalive_interval);
-    emit server->enableKeepalive(enable);
-    emit client->enableKeepalive(enable);
+        setup_keepalive(client, enable, keepalive_interval, keepalive_missed_limit);
+    }
 }
 
 //TODO send signal to server and client
@@ -197,7 +223,6 @@ Broker::Broker(quint16 serverPort,
 Broker::~Broker()
 {
     broker->stop();
-    //broker->deleteLater();
 }
 
 void Broker::enable_keepalive(bool enable)

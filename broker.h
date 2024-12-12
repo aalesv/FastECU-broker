@@ -48,13 +48,17 @@ public slots:
     void enable_keepalive(bool enable);
     void set_keepalive_interval(int ms);
     void set_keepalive_missed_limit(int limit);
+    void ssl_server_started();
+    void ssl_client_started();
 
 private:
+    QThread server_thread;
+    QThread client_thread;
     quint16 serverPort;
     quint16 clientPort;
     QString server_password = "";
-    SslServer *server;
-    SslServer *client;
+    SslServer *server = nullptr;
+    SslServer *client = nullptr;
     int keepalive_interval = 5000;
     int keepalive_missed_limit = 12;
     bool keepalive_enabled = false;

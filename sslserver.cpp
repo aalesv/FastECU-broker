@@ -50,7 +50,10 @@ SslServerHelper::SslServerHelper(quint16 port, QString allowedPath, QObject *par
     pWebSocketServer->setSslConfiguration(sslConfiguration);
     pWebSocketServer->setMaxPendingConnections(1);
 
-    connect(this, &SslServerHelper::peerConnected, this, &SslServerHelper::start_keepalive, Qt::QueuedConnection);
+    connect(this, &SslServerHelper::peerConnected, this, [this](){
+            if (this->keepalive_enabled)
+                start_keepalive();
+        }, Qt::QueuedConnection);
     connect(this, &SslServerHelper::peerDisconnected, this, &SslServerHelper::stop_keepalive, Qt::QueuedConnection);
 
     connect(keepalive_timer, &QTimer::timeout, this, &SslServerHelper::send_keepalive, Qt::QueuedConnection);
@@ -64,6 +67,7 @@ SslServerHelper::~SslServerHelper()
 
 bool SslServerHelper::start(void)
 {
+    qDebug() << Q_FUNC_INFO << server_name << QThread::currentThread();
     //Start a server
     bool r = pWebSocketServer->listen(QHostAddress::Any, port);
     if (r)
@@ -73,6 +77,7 @@ bool SslServerHelper::start(void)
                 this, &SslServerHelper::onNewConnection, Qt::QueuedConnection);
         connect(pWebSocketServer, &QWebSocketServer::sslErrors,
                 this, &SslServerHelper::onSslErrors, Qt::QueuedConnection);
+        emit started();
     }
     else
     {
@@ -89,6 +94,7 @@ void SslServerHelper::stop(void)
         qDebug() << server_name << "server stopping on port" << port;
         pWebSocketServer->close();
     }
+    emit stopped();
 }
 
 void SslServerHelper::onNewConnection()
@@ -268,14 +274,27 @@ bool SslServerHelper::isSslKeyFileFound()
     return keyFileFound;
 }
 
+void SslServerHelper::enable_keepalive(bool enable)
+{
+    keepalive_enabled = enable;
+    if (enable)
+    {
+        start_keepalive();
+    }
+    else
+    {
+        stop_keepalive();
+    }
+}
+
 //================================================
 
 SslServer::SslServer(quint16 port, QString allowedPath, QObject *parent)
     : QObject(parent)
     , server(new SslServerHelper(port, allowedPath, this))
 {
-    connect(this, &SslServer::enableKeepalive,
-            this, &SslServer::enable_keepalive, Qt::QueuedConnection);
+    connect(this,         &SslServer::enableKeepalive,
+            server, &SslServerHelper::enable_keepalive, Qt::QueuedConnection);
     connect(this,         &SslServer::receiveBinaryMessageFromBroker,
             server, &SslServerHelper::receiveBinaryMessageFromBroker, Qt::DirectConnection);
     connect(this,         &SslServer::receiveTextMessageFromBroker,
@@ -301,6 +320,10 @@ SslServer::SslServer(quint16 port, QString allowedPath, QObject *parent)
             this,         &SslServer::sendBinaryMessageToBroker, Qt::DirectConnection);
     connect(server, &SslServerHelper::sendTextMessageToBroker,
             this,         &SslServer::sendTextMessageToBroker, Qt::DirectConnection);
+    connect(server, &SslServerHelper::started,
+            this,         &SslServer::started, Qt::QueuedConnection);
+    connect(server, &SslServerHelper::stopped,
+            this,         &SslServer::stopped, Qt::QueuedConnection);
 }
 
 SslServer::~SslServer()
@@ -310,6 +333,7 @@ SslServer::~SslServer()
 
 void SslServer::enable_keepalive(bool enable)
 {
+    keepalive_enabled = enable;
     if (enable)
     {
         server->start_keepalive();

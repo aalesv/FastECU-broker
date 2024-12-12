@@ -89,6 +89,7 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
+    on_pushButton_stop_released();
     delete ui;
 }
 
@@ -126,6 +127,7 @@ void MainWindow::stopped()
 
 void MainWindow::on_pushButton_start_released()
 {
+    qDebug() << Q_FUNC_INFO << QThread::currentThread();
     this->log("Starting broker");
     broker_thread.start();
     broker = new Broker(server_port,
@@ -133,6 +135,9 @@ void MainWindow::on_pushButton_start_released()
                         server_password);
     connect(&broker_thread, &QThread::finished, broker, [this](){ this->broker->deleteLater(); });
     broker->moveToThread(&broker_thread);
+    keepalive_enabled = ui->checkBox_enable_keepalives->isChecked();
+    emit broker->setKeepaliveInterval(keepalive_interval);
+    emit broker->setKeepaliveMissedLimit(keepalive_missed_limit);
     emit broker->enableKeepalive(keepalive_enabled);
     emit broker->start();
     connect(broker, &Broker::started, this, &MainWindow::started, Qt::QueuedConnection);
@@ -194,6 +199,6 @@ void MainWindow::on_checkBox_enable_keepalives_stateChanged(int arg1)
 {
     keepalive_enabled = arg1;
     if (server_started)
-        broker->enableKeepalive(keepalive_enabled);
+        emit broker->enableKeepalive(keepalive_enabled);
 }
 
