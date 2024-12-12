@@ -24,14 +24,14 @@ BrokerHelper::BrokerHelper(quint16 serverPort,
     : QObject(parent)
     , serverPort(serverPort)
     , clientPort(clientPort)
-    , server(new SslServer(serverPort, server_password, this))
-    , client(new SslServer(clientPort, this))
+    , server(new SslServer(serverPort, server_password))
+    , client(new SslServer(clientPort))
 {
     int k_int = 0;
     if (keepalive_enabled)
         k_int = keepalive_interval;
-    server->set_keepalive_interval(k_int);
-    client->set_keepalive_interval(k_int);
+    emit server->setKeepaliveInterval(k_int);
+    emit client->setKeepaliveInterval(k_int);
     //Connect to log signals and chain them
     connect(server, &SslServer::log, this, &BrokerHelper::log, Qt::QueuedConnection);
     connect(client, &SslServer::log, this, &BrokerHelper::log, Qt::QueuedConnection);
@@ -73,36 +73,20 @@ BrokerHelper::~BrokerHelper()
 
 bool BrokerHelper::start(void)
 {
-    bool r = server->start() && client->start();
-    if (r)
-    {
-        qDebug() << "Broker: started";
-        emit started();
-    }
-    else
-    {
-        qDebug() << "Failed to start broker";
-        this->stop();
-    }
-    return r;
+    emit server->setServerName("Server:");
+    emit server->start();
+    emit client->setServerName("Client:");
+    emit client->start();
+    emit started();
+    return true;
 }
 
 void BrokerHelper::stop(void)
 {
     qDebug() << "Broker: stopped";
-    server->stop();
-    client->stop();
+    emit server->stop();
+    emit client->stop();
     emit stopped();
-}
-
-bool BrokerHelper::isSslCertFileFound()
-{
-    return server->isSslCertFileFound();
-}
-
-bool BrokerHelper::isSslKeyFileFound()
-{
-    return server->isSslKeyFileFound();
 }
 
 //Returns true if message is good, false otherwise
@@ -151,14 +135,14 @@ void BrokerHelper::receiveBinaryMessageFromSslClient(QByteArray &message)
 void BrokerHelper::set_keepalive_interval(int ms)
 {
     keepalive_interval = ms;
-    server->set_keepalive_interval(ms);
-    client->set_keepalive_interval(ms);
+    emit server->setKeepaliveInterval(ms);
+    emit client->setKeepaliveInterval(ms);
 }
 
 void BrokerHelper::enable_keepalive(bool enable)
 {
     keepalive_enabled = enable;
-    if (enable)
+    /*if (enable)
     {
         qDebug() << "Enabling keepalives";
         server->set_keepalive_interval(keepalive_interval);
@@ -173,7 +157,11 @@ void BrokerHelper::enable_keepalive(bool enable)
         client->stop_keepalive();
         server->set_keepalive_interval(0);
         client->set_keepalive_interval(0);
-    }
+    }*/
+    emit server->setKeepaliveInterval(keepalive_interval);
+    emit client->setKeepaliveInterval(keepalive_interval);
+    emit server->enableKeepalive(enable);
+    emit client->enableKeepalive(enable);
 }
 
 //TODO send signal to server and client
@@ -212,16 +200,6 @@ Broker::~Broker()
     //broker->deleteLater();
 }
 
-bool Broker::isSslCertFileFound()
-{
-    return broker->isSslCertFileFound();
-}
-
-bool Broker::isSslKeyFileFound()
-{
-    return broker->isSslKeyFileFound();
-}
-
 void Broker::enable_keepalive(bool enable)
 {
     broker->enable_keepalive(enable);
@@ -229,10 +207,6 @@ void Broker::enable_keepalive(bool enable)
 
 void Broker::start_broker()
 {
-    if (!broker->isSslCertFileFound())
-        emit log("Failed to open localhost.cert file");
-    if (!broker->isSslKeyFileFound())
-        emit log("Failed to open localhost.key file");
     broker->start();
 }
 

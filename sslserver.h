@@ -15,13 +15,13 @@
 
 //Provides 1 connection on a specified port
 //Websocket over SSL
-class SslServer : public QObject
+class SslServerHelper : public QObject
 {
     Q_OBJECT
 public:
-    explicit SslServer(quint16 port, QObject *parent = nullptr);
-    explicit SslServer(quint16 port, QString allowedPath = "", QObject *parent = nullptr);
-    ~SslServer() override;
+    explicit SslServerHelper(quint16 port, QObject *parent = nullptr);
+    explicit SslServerHelper(quint16 port, QString allowedPath = "", QObject *parent = nullptr);
+    ~SslServerHelper() override;
 
     bool isSslCertFileFound();
     bool isSslKeyFileFound();
@@ -39,6 +39,8 @@ public slots:
     void receiveTextMessageFromBroker(QString message);
     void receiveBinaryMessageFromBroker(QByteArray &message);
     void set_keepalive_interval(int ms) { keepalive_interval = ms; }
+    void set_keepalive_missed_limit(int limit) { pings_sequently_missed_limit = limit; }
+    void set_server_name(QString name) { server_name = name; }
     void start_keepalive();
     void stop_keepalive();
 
@@ -58,6 +60,7 @@ private:
     QWebSocket * peer = nullptr;
     //Allow to connect only at '/allowedPath' URL
     QString allowedPath = "";
+    QString server_name = "SslServer:";
 
     int keepalive_interval = 0;
     QTimer *keepalive_timer;
@@ -69,5 +72,32 @@ private:
 private slots:
     void send_keepalive();
     void pong(quint64 elapsedTime, const QByteArray &payload);
+};
+
+class SslServer : public QObject
+{
+    Q_OBJECT
+private:
+    SslServerHelper *server;
+    void enable_keepalive(bool enable);
+
+public:
+    explicit SslServer(quint16 port, QString allowedPath = "", QObject *parent = nullptr);
+    ~SslServer() override;
+
+signals:
+    void enableKeepalive(bool enable);
+    void log(QString message);
+    void peerConnected(QString message);
+    void peerDisconnected(QString message);
+    void receiveBinaryMessageFromBroker(QByteArray &message);
+    void receiveTextMessageFromBroker(QString message);
+    void sendBinaryMessageToBroker(QByteArray &message);
+    void sendTextMessageToBroker(QString message);
+    void setServerName(QString name);
+    void setKeepaliveInterval(int interval);
+    void setKeepaliveMissedLimit(int limit);
+    void start(void);
+    void stop(void);
 };
 #endif // SSLSERVER_H

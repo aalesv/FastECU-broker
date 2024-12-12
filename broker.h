@@ -25,9 +25,6 @@ public:
                     QObject *parent = nullptr);
     ~BrokerHelper() override;
 
-    bool isSslCertFileFound();
-    bool isSslKeyFileFound();
-
 signals:
     void log(QString message);
     void sendTextMessageToSslServer(QString message);
@@ -96,8 +93,6 @@ signals:
     void stopped();
 
 private slots:
-    bool isSslCertFileFound();
-    bool isSslKeyFileFound();
     void enable_keepalive(bool enable);
     void set_keepalive_interval(int interval);
     void set_keepalive_missed_limit(int limit);
