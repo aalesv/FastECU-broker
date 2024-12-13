@@ -4,8 +4,9 @@
 #include <QMainWindow>
 #include <QLabel>
 #include <QRandomGenerator>
-#include "broker.h"
 #include <QThread>
+#include <QFileSystemWatcher>
+#include "broker.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -52,26 +53,33 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
+signals:
+    void configChanged();
+
 private slots:
-    void on_pushButton_start_released();
-    void on_pushButton_stop_released();
-    void update_ui();
-    void log(QString message);
-    void on_lineEdit_client_port_textChanged(const QString &arg1);
-    void on_lineEdit_server_port_textChanged(const QString &arg1);
-    void server_connected(QString message);
-    void server_disconnected(QString message);
     void client_connected(QString message);
     void client_disconnected(QString message);
+    void config_changed();
+    void log(QString message);
+    void on_checkBox_enable_keepalives_stateChanged(int arg1);
+    void on_lineEdit_client_port_textChanged(const QString &arg1);
+    void on_lineEdit_server_password_textChanged(const QString &arg1);
+    void on_lineEdit_server_port_textChanged(const QString &arg1);
+    void on_pushButton_start_released();
+    void on_pushButton_stop_released();
+    void read_config(void);
+    void read_config(QString filename);
+    void server_connected(QString message);
+    void server_disconnected(QString message);
+    void setup_config_file_watcher();
     void started();
     void stopped();
-
-    void on_lineEdit_server_password_textChanged(const QString &arg1);
-
-    void on_checkBox_enable_keepalives_stateChanged(int arg1);
+    void update_ui();
 
 private:
     Ui::MainWindow *ui;
+    QString config_file_name = "fastecu-broker.ini";
+    QFileSystemWatcher *config_file_watcher;
     bool server_started = false;
     int server_port = 33314;
     int client_port = 33315;

@@ -8,6 +8,7 @@
 #include <chrono>
 #include <QDateTime>
 #include <QDebug>
+#include <QSettings>
 
 QString now()
 {
@@ -66,7 +67,10 @@ void MainWindow::log(QString message)
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
+    , config_file_watcher(new QFileSystemWatcher(this))
 {
+    read_config();
+    setup_config_file_watcher();
     ui->setupUi(this);
     ui->horizontalLayout_4->setAlignment(Qt::AlignBottom);
     //Init config groupbox
@@ -82,9 +86,10 @@ MainWindow::MainWindow(QWidget *parent)
     server_status_label->setOff(true);
     client_status_label->setOff(true);
 
-    keepalive_enabled = ui->checkBox_enable_keepalives->isChecked();
-
     this->update_ui();
+
+    connect(this, &MainWindow::configChanged,
+            this, &MainWindow::config_changed, Qt::QueuedConnection);
 }
 
 MainWindow::~MainWindow()
@@ -135,13 +140,10 @@ void MainWindow::on_pushButton_start_released()
                         server_password);
     connect(&broker_thread, &QThread::finished, broker, [this](){ this->broker->deleteLater(); });
     broker->moveToThread(&broker_thread);
-    keepalive_enabled = ui->checkBox_enable_keepalives->isChecked();
-    emit broker->setKeepaliveInterval(keepalive_interval);
-    emit broker->setKeepaliveMissedLimit(keepalive_missed_limit);
-    emit broker->enableKeepalive(keepalive_enabled);
-    emit broker->start();
     connect(broker, &Broker::started, this, &MainWindow::started, Qt::QueuedConnection);
     connect(broker, &Broker::stopped, this, &MainWindow::stopped, Qt::QueuedConnection);
+    emit broker->start();
+    emit configChanged();
 }
 
 void MainWindow::on_pushButton_stop_released()
@@ -194,7 +196,6 @@ void MainWindow::on_lineEdit_server_password_textChanged(const QString &arg1)
     server_password = arg1;
 }
 
-
 void MainWindow::on_checkBox_enable_keepalives_stateChanged(int arg1)
 {
     keepalive_enabled = arg1;
@@ -202,3 +203,56 @@ void MainWindow::on_checkBox_enable_keepalives_stateChanged(int arg1)
         emit broker->enableKeepalive(keepalive_enabled);
 }
 
+void MainWindow::read_config(void)
+{
+    read_config(config_file_name);
+}
+
+void MainWindow::read_config(QString filename)
+{
+    QSettings cfg(filename, QSettings::IniFormat);
+    qDebug() << "Reading config file" << filename;
+
+    keepalive_enabled = cfg.value("keepalive_enabled", keepalive_enabled).toBool();
+    qDebug() << "keepalive_enabled" << keepalive_enabled;
+
+    keepalive_interval = cfg.value("keepalive_interval", keepalive_interval).toInt();
+    qDebug() << "keepalive_interval" << keepalive_interval;
+
+    keepalive_missed_limit = cfg.value("keepalive_missed_limit", keepalive_missed_limit).toInt();
+    qDebug() << "keepalive_missed_limit" << keepalive_missed_limit;
+
+    emit configChanged();
+}
+
+void MainWindow::setup_config_file_watcher()
+{
+    config_file_watcher->addPath(config_file_name);
+    config_file_watcher->addPath(".");
+    //Reread file when it's changed
+    connect(config_file_watcher, &QFileSystemWatcher::fileChanged, this, [&](const QString &path)
+            {
+                if (path == config_file_name && QFile::exists(path))
+                    read_config(path);
+        }, Qt::QueuedConnection);
+    //Detect file addition
+    connect(config_file_watcher, &QFileSystemWatcher::directoryChanged, this, [&](const QString &path)
+            {
+                //addPath returns false if file is present on the list
+                if (QFile::exists(config_file_name) &&
+                    config_file_watcher->addPath(config_file_name))
+                {
+                    read_config(config_file_name);
+                }
+            }, Qt::QueuedConnection);
+}
+
+void MainWindow::config_changed()
+{
+    if (broker != nullptr)
+    {
+        emit broker->setKeepaliveInterval(keepalive_interval);
+        emit broker->setKeepaliveMissedLimit(keepalive_missed_limit);
+        emit broker->enableKeepalive(keepalive_enabled);
+    }
+}

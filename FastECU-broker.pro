@@ -27,10 +27,15 @@ qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
-#Copy SSL certificate and icons to build dir
+#Copy additional files to build dir
 CONFIG += file_copies
-COPIES += sslCertAndKey icons
+COPIES += sslCertAndKey icons iniFiles
 sslCertAndKey.files = $$files(localhost.*)
 icons.files = $$files(icons/*)
 sslCertAndKey.path = $$OUT_PWD
 icons.path = $$OUT_PWD/icons
+iniFiles.files = $$files(fastecu-broker.ini)
+iniFiles.path = $$OUT_PWD
+
+DISTFILES += \
+    fastecu-broker.ini

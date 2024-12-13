@@ -56,6 +56,7 @@ SslServerHelper::SslServerHelper(quint16 port, QString allowedPath, QObject *par
         }, Qt::QueuedConnection);
     connect(this, &SslServerHelper::peerDisconnected, this, &SslServerHelper::stop_keepalive, Qt::QueuedConnection);
 
+    keepalive_timer->setTimerType(Qt::VeryCoarseTimer);
     connect(keepalive_timer, &QTimer::timeout, this, &SslServerHelper::send_keepalive, Qt::QueuedConnection);
 }
 
@@ -334,12 +335,10 @@ SslServer::~SslServer()
 void SslServer::enable_keepalive(bool enable)
 {
     keepalive_enabled = enable;
+    //Restart keepalives if necessary
+    server->stop_keepalive();
     if (enable)
     {
         server->start_keepalive();
-    }
-    else
-    {
-        server->stop_keepalive();
     }
 }
