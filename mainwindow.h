@@ -19,13 +19,18 @@ class OnOffLabel : public QLabel
 public:
     OnOffLabel(QString img_on_path,
                QString img_off_path,
+               QString tooltip_on,
+               QString tooltip_off,
+               QWidget *parent);
+    OnOffLabel(QString img_on_path,
+               QString img_off_path,
                QString tooltip_on = "",
                QString tooltip_off = "",
                //width
                int w = 20,
                //height
                int h = 20,
-               QLabel *parent=nullptr);
+               QWidget *parent=nullptr);
     ~OnOffLabel(){}
 
     void setOn(bool b);
@@ -76,29 +81,8 @@ private:
     QString server_password =
         QString::number(QRandomGenerator::global()->bounded(1111, 9999));
     Broker *broker = nullptr;
-    QSharedPointer<OnOffLabel> broker_status_label =
-        QSharedPointer<OnOffLabel>(
-            new OnOffLabel("icons/broker_status_on.png",
-                           "icons/broker_status_off.png",
-                           "Broker started",
-                           "Broker stopped"
-            )
-        );
-    QSharedPointer<OnOffLabel> server_status_label =
-        QSharedPointer<OnOffLabel>(
-            new OnOffLabel("icons/server_status_connected.png",
-                           "icons/server_status_disconnected.png",
-                           "Server peer connected",
-                           "Server peer disconnected"
-                           )
-            );
-    QSharedPointer<OnOffLabel> client_status_label =
-        QSharedPointer<OnOffLabel>(
-            new OnOffLabel("icons/client_status_connected.png",
-                           "icons/client_status_disconnected.png",
-                           "Client peer connected",
-                           "Client peer disconnected"
-                           )
-            );
+    OnOffLabel *broker_status_label;
+    OnOffLabel *server_status_label;
+    OnOffLabel *client_status_label;
 };
 #endif // MAINWINDOW_H

@@ -16,6 +16,19 @@ QString now()
 }
 
 //==========OnOffLabel===========
+OnOffLabel::OnOffLabel(QString img_on_path,
+                       QString img_off_path,
+                       QString tooltip_on,
+                       QString tooltip_off,
+                       QWidget *parent)
+    : OnOffLabel(img_on_path,
+                 img_off_path,
+                 tooltip_on,
+                 tooltip_off,
+                 20,
+                 20,
+                 parent)
+{}
 
 OnOffLabel::OnOffLabel(QString img_on_path,
                        QString img_off_path,
@@ -23,7 +36,7 @@ OnOffLabel::OnOffLabel(QString img_on_path,
                        QString tooltip_off,
                        int w,
                        int h,
-                       QLabel *parent)
+                       QWidget *parent)
     : QLabel(parent)
     , img_on_path (img_on_path)
     , img_off_path(img_off_path)
@@ -65,6 +78,24 @@ void MainWindow::log(QString message)
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
+    , broker_status_label(new OnOffLabel("icons/broker_status_on.png",
+                                         "icons/broker_status_off.png",
+                                         "Broker started",
+                                         "Broker stopped",
+                                         this)
+                          )
+    , server_status_label(new OnOffLabel("icons/server_status_connected.png",
+                                         "icons/server_status_disconnected.png",
+                                         "Server peer connected",
+                                         "Server peer disconnected",
+                                         this)
+                          )
+    , client_status_label(new OnOffLabel("icons/client_status_connected.png",
+                                         "icons/client_status_disconnected.png",
+                                         "Client peer connected",
+                                         "Client peer disconnected",
+                                         this)
+                          )
 {
     ui->setupUi(this);
     ui->horizontalLayout_4->setAlignment(Qt::AlignBottom);
@@ -75,9 +106,9 @@ MainWindow::MainWindow(QWidget *parent)
     ui->lineEdit_server_port->setText( QString::number(server_port) );
     ui->lineEdit_server_password->setText(server_password);
     ui->plainTextEdit_logs->setReadOnly(true);
-    statusBar()->addWidget(broker_status_label.get());
-    statusBar()->addWidget(server_status_label.get());
-    statusBar()->addWidget(client_status_label.get());
+    statusBar()->addWidget(broker_status_label);
+    statusBar()->addWidget(server_status_label);
+    statusBar()->addWidget(client_status_label);
     server_status_label->setOff(true);
     client_status_label->setOff(true);
 
