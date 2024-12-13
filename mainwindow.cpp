@@ -227,13 +227,6 @@ void MainWindow::on_lineEdit_server_password_textChanged(const QString &arg1)
     server_password = arg1;
 }
 
-void MainWindow::on_checkBox_enable_keepalives_stateChanged(int arg1)
-{
-    keepalive_enabled = arg1;
-    if (server_started)
-        emit broker->enableKeepalive(keepalive_enabled);
-}
-
 void MainWindow::read_config(void)
 {
     read_config(config_file_name);

@@ -66,7 +66,6 @@ private slots:
     void client_disconnected(QString message);
     void config_changed();
     void log(QString message);
-    void on_checkBox_enable_keepalives_stateChanged(int arg1);
     void on_lineEdit_client_port_textChanged(const QString &arg1);
     void on_lineEdit_server_password_textChanged(const QString &arg1);
     void on_lineEdit_server_port_textChanged(const QString &arg1);
