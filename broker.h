@@ -38,6 +38,7 @@ public slots:
     void receiveTextMessageFromBroker(QString message);
     void receiveBinaryMessageFromBroker(QByteArray &message);
     void set_keepalive_interval(int ms) { keepalive_interval = ms; }
+    void set_keepalive_missed_limit(int limit){ pings_sequently_missed_limit = limit; }
     void start_keepalive();
     void stop_keepalive();
     void setName(QString name) { serverName = name; }
@@ -123,6 +124,7 @@ private:
     SslServer server;
     SslServer client;
     int keepalive_interval = 5000;
+    int keepalive_missed_limit = 12;
     bool keepalive_enabled = false;
     bool passClientTextMessage(QString &message);
 };

@@ -307,6 +307,8 @@ Broker::Broker(quint16 serverPort,
         k_int = keepalive_interval;
     server.set_keepalive_interval(k_int);
     client.set_keepalive_interval(k_int);
+    server.set_keepalive_missed_limit(keepalive_missed_limit);
+    client.set_keepalive_missed_limit(keepalive_missed_limit);
     //Connect to log signals and chain them
     connect(&server, &SslServer::log, this, &Broker::log, Qt::QueuedConnection);
     connect(&client, &SslServer::log, this, &Broker::log, Qt::QueuedConnection);
