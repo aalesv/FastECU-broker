@@ -37,7 +37,7 @@ SslServer::SslServer(quint16 port, QString allowedPath, QObject *parent)
 {
     certFileFound = false;
     keyFileFound = false;
-    qDebug() << "Check cert files";
+    qDebug() << serverName << "Check cert files";
     pWebSocketServer = new QWebSocketServer(QStringLiteral("FastECU Broker Server"),
                                             QWebSocketServer::SecureMode,
                                             this);
@@ -76,7 +76,7 @@ bool SslServer::start(void)
     bool r = pWebSocketServer->listen(QHostAddress::Any, port);
     if (r)
     {
-        qDebug() << "SslServer: server listening on port" << port;
+        qDebug() << serverName << "server listening on port" << port;
         connect(pWebSocketServer, &QWebSocketServer::newConnection,
                 this, &SslServer::onNewConnection, Qt::DirectConnection);
         connect(pWebSocketServer, &QWebSocketServer::sslErrors,
@@ -84,7 +84,7 @@ bool SslServer::start(void)
     }
     else
     {
-        qDebug() << "SslServer: failed to start server on port" << port;
+        qDebug() << serverName << "failed to start server on port" << port;
         emit log("Failed to open port "+QString::number(port));
     }
     return r;
@@ -94,7 +94,7 @@ void SslServer::stop(void)
 {
     if (pWebSocketServer->isListening())
     {
-        qDebug() << "SslServer: server stopping on port" << port;
+        qDebug() << serverName << "server stopping on port" << port;
         pWebSocketServer->close();
     }
 }
@@ -121,14 +121,14 @@ void SslServer::onNewConnection()
     //Allow connections only at certain path
     if (pSocket->requestUrl().path() != "/"+allowedPath)
     {
-        emit log("SslServer: Peer "+p_addr+":"+p_port+" tries to connect at invalid path");
-        qDebug() << "SslServer: Peer " << p_addr << p_port << "tries to connect at invalid path";
+        emit log(serverName+" Peer "+p_addr+":"+p_port+" tries to connect at invalid path");
+        qDebug() << serverName << "Peer " << p_addr << p_port << "tries to connect at invalid path";
         delete pSocket;
         return;
     }
 
-    emit log("SslServer: Peer connected: "+p_addr+":"+p_port);
-    qDebug() << "SslServer: Peer connected:" << p_addr << p_port;
+    emit log(serverName+" Peer connected: "+p_addr+":"+p_port);
+    qDebug() << serverName << "Peer connected:" << p_addr << p_port;
     //Qt::DirectConnection mode calls slot immediately after signal emittig
     connect(pSocket, &QWebSocket::textMessageReceived,
             this, &SslServer::processTextMessage, Qt::DirectConnection);
@@ -149,12 +149,12 @@ void SslServer::start_keepalive()
         keepalive_interval > 0 &&
         !keepalive_timer->isActive())
     {
-        qDebug() << "Starting keepalives";
+        qDebug() << serverName << "Starting keepalives";
         keepalive_timer->start(keepalive_interval);
     }
     else
     {
-        qDebug() << "Cannot start keepalive.";
+        qDebug() << serverName << "Cannot start keepalive.";
     }
 }
 
@@ -165,8 +165,8 @@ void SslServer::send_keepalive()
 {
     if (pings_sequently_missed == pings_sequently_missed_limit)
     {
-        qDebug() << "Missed keepalives limit exceeded. Assume the client is disconnected.";
-        emit log("Missed keepalives limit exceeded. Assume the client is disconnected.");
+        qDebug() << serverName << "Missed keepalives limit exceeded. Assume the client is disconnected.";
+        emit log(serverName+" Missed keepalives limit exceeded. Assume the client is disconnected.");
         if (peer)
             peer->close();
         return;
@@ -184,6 +184,7 @@ void SslServer::send_keepalive()
 
 void SslServer::stop_keepalive()
 {
+    qDebug() << serverName << "Stopping keepalives";
     keepalive_timer->stop();
 }
 
@@ -200,11 +201,11 @@ void SslServer::pong(quint64 elapsedTime, const QByteArray &payload)
 //Message is received from network, send it to broker
 void SslServer::processTextMessage(QString message)
 {
-    //qDebug() << "SslServer: Peer sent text message";
+    //qDebug() << serverName << "Peer sent text message";
     QWebSocket *pClient = qobject_cast<QWebSocket *>(sender());
     if (pClient !=nullptr)
     {
-        //qDebug() << "SslServer: Sending message to broker";
+        //qDebug() << serverName << "Sending message to broker";
         emit sendTextMessageToBroker(message);
     }
 }
@@ -212,11 +213,11 @@ void SslServer::processTextMessage(QString message)
 //Message is received from network, send it to broker
 void SslServer::processBinaryMessage(QByteArray message)
 {
-    //qDebug() << "SslServer: Peer sent binary message";
+    //qDebug() << serverName << "Peer sent binary message";
     QWebSocket *pClient = qobject_cast<QWebSocket *>(sender());
     if (pClient !=nullptr)
     {
-        //qDebug() << "SslServer: Sending message to broker";
+        //qDebug() << serverName << "Sending message to broker";
         emit sendBinaryMessageToBroker(message);
     }
 }
@@ -224,10 +225,10 @@ void SslServer::processBinaryMessage(QByteArray message)
 //Message is receiver from broker, send it to network
 void SslServer::receiveTextMessageFromBroker(QString message)
 {
-    //qDebug() << "SslServer: Received text message from broker";
+    //qDebug() << serverName << "Received text message from broker";
     if (peer != nullptr)
     {
-        //qDebug() << "SslServer: Sending text message to peer";
+        //qDebug() << serverName << "Sending text message to peer";
         peer->sendTextMessage(message);
     }
 }
@@ -235,10 +236,10 @@ void SslServer::receiveTextMessageFromBroker(QString message)
 //Message is receiver from broker, send it to network
 void SslServer::receiveBinaryMessageFromBroker(QByteArray &message)
 {
-    //qDebug() << "SslServer: Received binary message from broker";
+    //qDebug() << serverName << "Received binary message from broker";
     if (peer != nullptr)
     {
-        //qDebug() << "SslServer: Sending binary message to peer";
+        //qDebug() << serverName << "Sending binary message to peer";
         peer->sendBinaryMessage(message);
     }
 }
@@ -250,8 +251,8 @@ void SslServer::socketDisconnected()
     {
         QString p_addr = QHostAddressToString(pClient->peerAddress());
         QString p_port = QString::number(pClient->peerPort());
-        emit log("Peer disconnected: "+p_addr+":"+p_port);
-        qDebug() << "SslServer: Peer disconnected:" << p_addr << p_port;
+        emit log(serverName+" Peer disconnected: "+p_addr+":"+p_port);
+        qDebug() << serverName << "Peer disconnected:" << p_addr << p_port;
 
         peer = nullptr;
         pClient->deleteLater();
@@ -261,8 +262,8 @@ void SslServer::socketDisconnected()
 
 void SslServer::onSslErrors(const QList<QSslError> &errors)
 {
-    emit log("SSL server errors occurred");
-    qDebug() << "SslServer: Ssl errors occurred" << errors;
+    emit log(serverName+" SSL server errors occurred");
+    qDebug() << serverName << "Ssl errors occurred" << errors;
 }
 
 bool SslServer::isSslCertFileFound()
@@ -299,6 +300,8 @@ Broker::Broker(quint16 serverPort,
     , server(SslServer(serverPort, server_password, this))
     , client(SslServer(clientPort, this))
 {
+    server.setName("Server:");
+    client.setName("Client:");
     int k_int = 0;
     if (keepalive_enabled)
         k_int = keepalive_interval;
@@ -456,7 +459,7 @@ void Broker::enable_keepalive(bool enable)
         (server.isPeerConnected() ^ client.isPeerConnected())
         )
     {
-        qDebug() << "Enabling keepalives";
+        qDebug() << "Broker: Enabling keepalives";
         server.set_keepalive_interval(keepalive_interval);
         client.set_keepalive_interval(keepalive_interval);
         server.start_keepalive();
@@ -464,7 +467,7 @@ void Broker::enable_keepalive(bool enable)
     }
     else
     {
-        qDebug() << "Disabling keepalives";
+        qDebug() << "Broker: Disabling keepalives";
         server.stop_keepalive();
         client.stop_keepalive();
         server.set_keepalive_interval(0);

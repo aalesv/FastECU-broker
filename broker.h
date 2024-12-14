@@ -40,6 +40,7 @@ public slots:
     void set_keepalive_interval(int ms) { keepalive_interval = ms; }
     void start_keepalive();
     void stop_keepalive();
+    void setName(QString name) { serverName = name; }
 
 signals:
     void log(QString message);
@@ -49,6 +50,7 @@ signals:
     void peerDisconnected(QString message);
 
 private:
+    QString serverName = "SslServer:";
     bool certFileFound = false;
     bool keyFileFound = false;
 
