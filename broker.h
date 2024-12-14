@@ -23,6 +23,7 @@ public:
 
     bool isSslCertFileFound();
     bool isSslKeyFileFound();
+    bool isPeerConnected();
 
 private slots:
     void onNewConnection();
@@ -94,10 +95,10 @@ signals:
     void sendBinaryMessageToSslServer(QByteArray &message);
     void sendTextMessageToSslClient(QString message);
     void sendBinaryMessageToSslClient(QByteArray &message);
-    void server_connected(QString message);
-    void server_disconnected(QString message);
-    void client_connected(QString message);
-    void client_disconnected(QString message);
+    void serverConnected(QString message);
+    void serverDisconnected(QString message);
+    void clientConnected(QString message);
+    void clientDisconnected(QString message);
 
 public slots:
     bool start(void);
@@ -108,6 +109,10 @@ public slots:
     void receiveBinaryMessageFromSslClient(QByteArray &message);
     void enable_keepalive(bool enable);
     void set_keepalive_interval(int ms);
+    void server_connected(QString message);
+    void server_disconnected(QString message);
+    void client_connected(QString message);
+    void client_disconnected(QString message);
 
 private:
     quint16 serverPort;

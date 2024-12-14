@@ -119,13 +119,13 @@ void MainWindow::on_pushButton_start_released()
     {
         this->update_ui();
         connect(broker, &Broker::log, this, &MainWindow::log, Qt::QueuedConnection);
-        connect(broker,   &Broker::client_connected,
+        connect(broker,   &Broker::clientConnected,
                 this, &MainWindow::client_connected);
-        connect(broker,   &Broker::client_disconnected,
+        connect(broker,   &Broker::clientDisconnected,
                 this, &MainWindow::client_disconnected);
-        connect(broker,   &Broker::server_connected,
+        connect(broker,   &Broker::serverConnected,
                 this, &MainWindow::server_connected);
-        connect(broker,   &Broker::server_disconnected,
+        connect(broker,   &Broker::serverDisconnected,
                 this, &MainWindow::server_disconnected);
         this->log("Broker started");
     }

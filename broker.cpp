@@ -58,7 +58,7 @@ SslServer::SslServer(quint16 port, QString allowedPath, QObject *parent)
     pWebSocketServer->setSslConfiguration(sslConfiguration);
     pWebSocketServer->setMaxPendingConnections(1);
 
-    connect(this, &SslServer::peerConnected, this, &SslServer::start_keepalive);
+    //connect(this, &SslServer::peerConnected, this, &SslServer::start_keepalive);
     connect(this, &SslServer::peerDisconnected, this, &SslServer::stop_keepalive);
 
     connect(keepalive_timer, &QTimer::timeout, this, &SslServer::send_keepalive);
@@ -275,6 +275,10 @@ bool SslServer::isSslKeyFileFound()
     return keyFileFound;
 }
 
+bool SslServer::isPeerConnected()
+{
+    return (peer != nullptr);
+}
 //==============================================
 Broker::Broker(quint16 serverPort,
                quint16 clientPort,
@@ -379,6 +383,30 @@ bool Broker::passClientTextMessage(QString &message)
     return true;
 }
 
+void Broker::server_connected(QString message)
+{
+    enable_keepalive(keepalive_enabled);
+    emit serverConnected(message);
+}
+
+void Broker::server_disconnected(QString message)
+{
+    enable_keepalive(keepalive_enabled);
+    emit serverDisconnected(message);
+}
+
+void Broker::client_connected(QString message)
+{
+    enable_keepalive(keepalive_enabled);
+    emit clientConnected(message);
+}
+
+void Broker::client_disconnected(QString message)
+{
+    enable_keepalive(keepalive_enabled);
+    emit clientDisconnected(message);
+}
+
 void Broker::receiveTextMessageFromSslServer(QString message)
 {
     //qDebug() << "Broker: received text message from server";
@@ -424,7 +452,9 @@ void Broker::set_keepalive_interval(int ms)
 void Broker::enable_keepalive(bool enable)
 {
     keepalive_enabled = enable;
-    if (enable)
+    if (enable &&
+        (server.isPeerConnected() ^ client.isPeerConnected())
+        )
     {
         qDebug() << "Enabling keepalives";
         server.set_keepalive_interval(keepalive_interval);
