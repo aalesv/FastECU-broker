@@ -111,6 +111,8 @@ void SslServer::onNewConnection()
     //We can serve only one client
     if (peer != nullptr)
     {
+        //It could be our peer that lost connection and reconnects
+        check_connection();
         delete pSocket;
         return;
     }
@@ -140,6 +142,8 @@ void SslServer::onNewConnection()
     peer = pSocket;
     pings_sequently_missed = 0;
     connect(peer, &QWebSocket::pong, this, &SslServer::pong);
+    last_input_packet_time = std::chrono::high_resolution_clock::now();
+    hanged_connection_flag = false;
     emit peerConnected("");
 }
 
@@ -196,6 +200,34 @@ void SslServer::ping(const QByteArray &payload)
 void SslServer::pong(quint64 elapsedTime, const QByteArray &payload)
 {
     pings_sequently_missed = 0;
+    connection_restored();
+}
+
+void SslServer::check_connection(void)
+{
+    auto now = std::chrono::high_resolution_clock::now();
+    if (!hanged_connection_flag)
+    {
+        //Convert to milliseconds
+        int interval = (now - last_input_packet_time).count()/1e6;
+        if (interval > hanged_connection_interval)
+        {
+            qDebug() << serverName << "Connection hung";
+            hanged_connection_flag = true;
+            emit connectionHung();
+        }
+    }
+}
+
+void SslServer::connection_restored(void)
+{
+    last_input_packet_time = std::chrono::high_resolution_clock::now();
+    if (hanged_connection_flag)
+    {
+        qDebug() << serverName << "Hanged connection has been restored";
+        hanged_connection_flag = false;
+        emit connectionRestored();
+    }
 }
 
 //Message is received from network, send it to broker
@@ -205,6 +237,7 @@ void SslServer::processTextMessage(QString message)
     QWebSocket *pClient = qobject_cast<QWebSocket *>(sender());
     if (pClient !=nullptr)
     {
+        connection_restored();
         //qDebug() << serverName << "Sending message to broker";
         emit sendTextMessageToBroker(message);
     }
@@ -217,6 +250,7 @@ void SslServer::processBinaryMessage(QByteArray message)
     QWebSocket *pClient = qobject_cast<QWebSocket *>(sender());
     if (pClient !=nullptr)
     {
+        connection_restored();
         //qDebug() << serverName << "Sending message to broker";
         emit sendBinaryMessageToBroker(message);
     }
@@ -228,6 +262,7 @@ void SslServer::receiveTextMessageFromBroker(QString message)
     //qDebug() << serverName << "Received text message from broker";
     if (peer != nullptr)
     {
+        check_connection();
         //qDebug() << serverName << "Sending text message to peer";
         peer->sendTextMessage(message);
     }
@@ -239,6 +274,7 @@ void SslServer::receiveBinaryMessageFromBroker(QByteArray &message)
     //qDebug() << serverName << "Received binary message from broker";
     if (peer != nullptr)
     {
+        check_connection();
         //qDebug() << serverName << "Sending binary message to peer";
         peer->sendBinaryMessage(message);
     }
@@ -341,6 +377,16 @@ Broker::Broker(quint16 serverPort,
             &server, &SslServer::receiveBinaryMessageFromBroker, Qt::DirectConnection);
     connect(this, &Broker::sendBinaryMessageToSslClient,
             &client, &SslServer::receiveBinaryMessageFromBroker, Qt::DirectConnection);
+
+    connect(&server, &SslServer::connectionHung,
+            this, &Broker::connection_hung, Qt::QueuedConnection);
+    connect(&client, &SslServer::connectionHung,
+            this, &Broker::connection_hung, Qt::QueuedConnection);
+
+    connect(&server, &SslServer::connectionRestored,
+            this, &Broker::connection_restored, Qt::QueuedConnection);
+    connect(&client, &SslServer::connectionRestored,
+            this, &Broker::connection_restored, Qt::QueuedConnection);
 }
 
 Broker::~Broker()
@@ -458,6 +504,8 @@ void Broker::enable_keepalive(bool enable)
 {
     keepalive_enabled = enable;
     if (enable &&
+        //Enable if only one peer connected
+        //client only or server only
         (server.isPeerConnected() ^ client.isPeerConnected())
         )
     {
@@ -475,4 +523,20 @@ void Broker::enable_keepalive(bool enable)
         server.set_keepalive_interval(0);
         client.set_keepalive_interval(0);
     }
+}
+
+void Broker::connection_hung()
+{
+    SslServer *srv = qobject_cast<SslServer *>(sender());
+    if (keepalive_enabled)
+    {
+        srv->set_keepalive_interval(keepalive_interval);
+        srv->start_keepalive();
+    }
+}
+
+void Broker::connection_restored()
+{
+    SslServer *srv = qobject_cast<SslServer *>(sender());
+    enable_keepalive(keepalive_enabled);
 }
