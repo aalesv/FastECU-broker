@@ -158,7 +158,14 @@ void SslServer::start_keepalive()
     }
     else
     {
-        qDebug() << serverName << "Cannot start keepalive.";
+        QString msg;
+        if (peer == nullptr)
+            msg = " - no peer present";
+        if (keepalive_interval <= 0)
+            msg = " - keepalives disabled";
+        if (keepalive_timer->isActive())
+            msg = " - keepalives are already active";
+        qDebug() << serverName << "Cannot start keepalive"+msg;
     }
 }
 
