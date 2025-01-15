@@ -403,7 +403,15 @@ Broker::~Broker()
 
 bool Broker::start(void)
 {
-    bool r = server.start() && client.start();
+    bool ssl_is_supported = QSslSocket::supportsSsl();
+    if (! ssl_is_supported)
+    {
+        qDebug() << "ERROR: SSL is NOT supported!";
+        emit log("ERROR: SSL libaries not found! No further work possible. "
+                 "Fix the error and restart the application.");
+    }
+
+    bool r = ssl_is_supported && server.start() && client.start();
     if (r)
     {
         qDebug() << "Broker: started";

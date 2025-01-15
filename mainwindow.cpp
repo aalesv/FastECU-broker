@@ -139,6 +139,17 @@ void MainWindow::on_pushButton_start_released()
                         client_port,
                         server_password,
                         this);
+
+    connect(broker, &Broker::log, this, &MainWindow::log, Qt::QueuedConnection);
+    connect(broker,   &Broker::clientConnected,
+            this, &MainWindow::client_connected);
+    connect(broker,   &Broker::clientDisconnected,
+            this, &MainWindow::client_disconnected);
+    connect(broker,   &Broker::serverConnected,
+            this, &MainWindow::server_connected);
+    connect(broker,   &Broker::serverDisconnected,
+            this, &MainWindow::server_disconnected);
+
     if (!broker->isSslCertFileFound())
         this->log("Failed to open localhost.cert file");
     if (!broker->isSslKeyFileFound())
@@ -149,15 +160,6 @@ void MainWindow::on_pushButton_start_released()
     if (this->server_started)
     {
         this->update_ui();
-        connect(broker, &Broker::log, this, &MainWindow::log, Qt::QueuedConnection);
-        connect(broker,   &Broker::clientConnected,
-                this, &MainWindow::client_connected);
-        connect(broker,   &Broker::clientDisconnected,
-                this, &MainWindow::client_disconnected);
-        connect(broker,   &Broker::serverConnected,
-                this, &MainWindow::server_connected);
-        connect(broker,   &Broker::serverDisconnected,
-                this, &MainWindow::server_disconnected);
         this->log("Broker started");
     }
     else
