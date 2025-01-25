@@ -8,6 +8,7 @@
 #include <QtNetwork/QSslError>
 #include <QTimer>
 #include <chrono>
+#include "peers/peerstorage.h"
 
 QT_FORWARD_DECLARE_CLASS(QWebSocketServer)
 QT_FORWARD_DECLARE_CLASS(QWebSocket)
@@ -19,30 +20,31 @@ class SslServer : public QObject
     Q_OBJECT
 public:
     explicit SslServer(quint16 port, QObject *parent = nullptr);
-    explicit SslServer(quint16 port, QString allowedPath = "", QObject *parent = nullptr);
+    explicit SslServer(quint16 port, QString password = "", QObject *parent = nullptr);
     ~SslServer() override;
 
+    const QString webSocketPasswordHeader = "fastecu-basic-password";
     bool isPeerConnected();
     bool isSslCertFileFound();
     bool isSslKeyFileFound();
 
 public slots:
-    void receiveTextMessageFromBroker(QString message);
-    void receiveBinaryMessageFromBroker(QByteArray &message);
+    void receiveTextMessageFromBroker(QString message, QString path);
+    void receiveBinaryMessageFromBroker(QByteArray &message, QString path);
     void setName(QString name) { serverName = name; }
     void set_keepalive_interval(int ms) { keepalive_interval = ms; }
     void set_keepalive_missed_limit(int limit){ pings_sequently_missed_limit = limit; }
     bool start(void);
     void stop(void);
-    void start_keepalive();
-    void stop_keepalive();
+    void start_keepalives();
+    void stop_keepalives();
 
 signals:
     void connectionHung();
     void connectionRestored();
     void log(QString message);
-    void sendTextMessageToBroker(QString message);
-    void sendBinaryMessageToBroker(QByteArray &message);
+    void sendTextMessageToBroker(QString message, QString path);
+    void sendBinaryMessageToBroker(QByteArray &message, QString path);
     void peerConnected(QString message);
     void peerDisconnected(QString message);
 
@@ -53,24 +55,21 @@ private:
 
     quint16 port;
     QWebSocketServer *pWebSocketServer;
-    QWebSocket * peer = nullptr;
-    //Allow to connect only at '/allowedPath' URL
-    QString allowedPath = "";
+    PeerStorage peers;
+    QString password = "";
 
     int keepalive_interval = 0;
-    QTimer *keepalive_timer;
     int keepalive_payload_pos = 0;
     int pings_sequently_missed = 0;
     int pings_sequently_missed_limit = 12;
-    void ping(const QByteArray &payload = QByteArray());
-    bool is_keepalive_active() { return keepalive_timer->isActive(); }
+    void ping(QWebSocket *pSocket, const QByteArray &payload = QByteArray());
 
     std::chrono::time_point<std::chrono::high_resolution_clock> last_input_packet_time;
     //When no incoming packets have arrived from a network for a certain period of time,
     //consider the connection hung
     int hanged_connection_interval = 120*1000;
-    void check_connection(void);
-    void connection_restored(void);
+    void check_connection(Peer *peer);
+    void connection_restored(Peer *peer);
     bool hanged_connection_flag = false;
 
 private slots:
@@ -79,8 +78,10 @@ private slots:
     void pong(quint64 elapsedTime, const QByteArray &payload);
     void processBinaryMessage(QByteArray message);
     void processTextMessage(QString message);
-    void send_keepalive();
+    void send_keepalive(Peer *peer);
     void socketDisconnected();
+    void start_keepalive(Peer *peer);
+    void stop_keepalive(Peer *peer);
 };
 
 //Provides 2 websocket servers over SSL
@@ -104,10 +105,10 @@ public:
 
 signals:
     void log(QString message);
-    void sendTextMessageToSslServer(QString message);
-    void sendBinaryMessageToSslServer(QByteArray &message);
-    void sendTextMessageToSslClient(QString message);
-    void sendBinaryMessageToSslClient(QByteArray &message);
+    void sendTextMessageToSslServer(QString message, QString path);
+    void sendBinaryMessageToSslServer(QByteArray &message, QString path);
+    void sendTextMessageToSslClient(QString message, QString path);
+    void sendBinaryMessageToSslClient(QByteArray &message, QString path);
     void serverConnected(QString message);
     void serverDisconnected(QString message);
     void clientConnected(QString message);
@@ -119,10 +120,10 @@ public slots:
     void enable_keepalive(bool enable);
 
 private slots:
-    void receiveTextMessageFromSslServer(QString message);
-    void receiveBinaryMessageFromSslServer(QByteArray &message);
-    void receiveTextMessageFromSslClient(QString message);
-    void receiveBinaryMessageFromSslClient(QByteArray &message);
+    void receiveTextMessageFromSslServer(QString message, QString path);
+    void receiveBinaryMessageFromSslServer(QByteArray &message, QString path);
+    void receiveTextMessageFromSslClient(QString message, QString path);
+    void receiveBinaryMessageFromSslClient(QByteArray &message, QString path);
     void set_keepalive_interval(int ms);
     void server_connected(QString message);
     void server_disconnected(QString message);
