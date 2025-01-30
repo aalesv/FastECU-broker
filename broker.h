@@ -64,13 +64,17 @@ private:
     int pings_sequently_missed_limit = 12;
     void ping(QWebSocket *pSocket, const QByteArray &payload = QByteArray());
 
-    std::chrono::time_point<std::chrono::high_resolution_clock> last_input_packet_time;
     //When no incoming packets have arrived from a network for a certain period of time,
     //consider the connection hung
     int hanged_connection_interval = 120*1000;
+    //Passively check for hung connection periodically
+    int periodic_connections_check_interval = 15*1000;
+    std::chrono::time_point<chrono_clock> last_connections_check =
+        chrono_clock::now();
+    void check_connection(QVector<Peer*> plist);
     void check_connection(Peer *peer);
+    void check_connections();
     void connection_restored(Peer *peer);
-    bool hanged_connection_flag = false;
 
 private slots:
     void onNewConnection();

@@ -104,16 +104,18 @@ void SslServer::onNewConnection()
 
     QString p_addr = QHostAddressToString(pSocket->peerAddress());
     QString p_port = QString::number(pSocket->peerPort());
-    QString p_path = pSocket->requestUrl().path();
+    QUrl reqUrl = pSocket->requestUrl();
+    QString p_path = reqUrl.path();
     QString p_pass = QString(pSocket->request().rawHeader(webSocketPasswordHeader.toUtf8()));
 
+
     //Path must be unique
-    if (peers.contains(pSocket->requestUrl().path()))
+    if (auto plist = peers.peers(reqUrl.path()); plist.size() > 0)
     {
         qDebug() << serverName << "Peer" << p_addr << p_port
                  <<"is trying to connect to already connected path"
-                 << pSocket->requestUrl().path();
-        //TODO check_connection
+                 << reqUrl.path();
+        check_connection(plist);
         delete pSocket;
         return;
     }
@@ -157,6 +159,9 @@ void SslServer::start_keepalives()
 
 void SslServer::start_keepalive(Peer *peer)
 {
+    if (peer == nullptr)
+        return;
+
     if (peer->socket() != nullptr &&
         keepalive_interval > 0 &&
         !peer->keepalive_timer->isActive())
@@ -190,12 +195,14 @@ static const int keepalive_palyload_len = keepalive_payload.length();
 
 void SslServer::send_keepalive(Peer *peer)
 {
+    if (peer == nullptr)
+        return;
+
     if (peer->pings_sequently_missed == pings_sequently_missed_limit)
     {
         qDebug() << serverName << "Missed keepalives limit exceeded. Assume the client is disconnected.";
         emit log(serverName+" Missed keepalives limit exceeded. Assume the client is disconnected.");
-        if (peer)
-            peer->socket()->close();
+        peer->socket()->close();
         return;
     }
     QByteArray payload;
@@ -217,10 +224,29 @@ void SslServer::stop_keepalives()
 
 void SslServer::stop_keepalive(Peer *peer)
 {
-    qDebug() << serverName << "Stopping keepalives"
-             << QHostAddressToString(peer->socket()->peerAddress())
-             << peer->socket()->peerPort();
-    peer->keepalive_timer->stop();
+    if (peer == nullptr)
+        return;
+
+    if (peer->hanged_connection_flag &&
+         keepalive_interval > 0)
+    {
+        if (peer->keepalive_timer->isActive())
+        {
+            qDebug() << serverName << "Not stopping keepalives"
+                     << QHostAddressToString(peer->socket()->peerAddress())
+                     << peer->socket()->peerPort();
+        }
+    }
+    else
+    {
+        if (peer->keepalive_timer->isActive())
+        {
+            qDebug() << serverName << "Stopping keepalives"
+                     << QHostAddressToString(peer->socket()->peerAddress())
+                     << peer->socket()->peerPort();
+            peer->keepalive_timer->stop();
+        }
+    }
 }
 
 void SslServer::ping(QWebSocket *pSocket, const QByteArray &payload)
@@ -233,25 +259,56 @@ void SslServer::pong(quint64 elapsedTime, const QByteArray &payload)
     QWebSocket *pClient = qobject_cast<QWebSocket *>(sender());
     Peer *peer = peers.peer(pClient);
     peer->pings_sequently_missed = 0;
-    connection_restored(peer);
+    //connection_restored(peer);
     //qDebug() << serverName << "Pong from"
     //         << QHostAddressToString(peer->socket()->peerAddress())
     //         << peer->socket()->peerPort();
 }
 
+void SslServer::check_connections()
+{
+    auto now = chrono_clock::now();
+    //Convert to milliseconds
+    int interval = std::chrono::duration_cast<std::chrono::milliseconds>
+                   (now - last_connections_check).count();
+    if (interval > periodic_connections_check_interval)
+    {
+        //qDebug() << serverName << "Running periodic connections check";
+        check_connection(peers);
+        last_connections_check = chrono_clock::now();
+    }
+}
+
+void SslServer::check_connection(QVector<Peer*> plist)
+{
+    for (auto p : plist)
+        check_connection(p);
+}
+
 void SslServer::check_connection(Peer *peer)
 {
+    if (peer == nullptr)
+        return;
+
     if (!peer->hanged_connection_flag)
     {
-        auto now = std::chrono::high_resolution_clock::now();
+        auto now = chrono_clock::now();
         //Convert to milliseconds
-        int interval = (now - last_input_packet_time).count()/1e6;
+        int interval = std::chrono::duration_cast<std::chrono::milliseconds>
+                        (now - peer->last_input_packet_time).count();
+        QWebSocket *s = peer->socket();
+        //qDebug() << serverName << "check_connection"
+        //         << QHostAddressToString(s->peerAddress())
+        //         << s->peerPort() << s->requestUrl().path()
+        //         << interval;
         if (interval > hanged_connection_interval)
         {
             qDebug() << serverName << "Connection hung"
                      << QHostAddressToString(peer->socket()->peerAddress())
                      << peer->socket()->peerPort();
             peer->hanged_connection_flag = true;
+            if (keepalive_interval > 0)
+                start_keepalive(peer);
             emit connectionHung();
         }
     }
@@ -259,7 +316,10 @@ void SslServer::check_connection(Peer *peer)
 
 void SslServer::connection_restored(Peer *peer)
 {
-    peer->last_input_packet_time = std::chrono::high_resolution_clock::now();
+    if (peer == nullptr)
+        return;
+
+    peer->last_input_packet_time = chrono_clock::now();
     if (peer->hanged_connection_flag)
     {
         qDebug() << serverName << "Hanged connection has been restored"
@@ -302,12 +362,13 @@ void SslServer::processBinaryMessage(QByteArray message)
 //Message is receiver from broker, send it to network
 void SslServer::receiveTextMessageFromBroker(QString message, QString path)
 {
+    check_connections();
     //qDebug() << serverName << "Received text message from broker" << path;
     for(auto pSocket : peers.sockets(path))
     {
         if (pSocket != nullptr)
         {
-            check_connection(peers.peer(pSocket));
+            //check_connection(peers.peer(pSocket));
             //qDebug() << serverName << "Sending text message to peer"
             //         << QHostAddressToString(pSocket->peerAddress())
             //         << pSocket->peerPort();
@@ -319,12 +380,13 @@ void SslServer::receiveTextMessageFromBroker(QString message, QString path)
 //Message is receiver from broker, send it to network
 void SslServer::receiveBinaryMessageFromBroker(QByteArray &message, QString path)
 {
+    check_connections();
     //qDebug() << serverName << "Received binary message from broker" << path;
     for(auto pSocket : peers.sockets(path))
     {
         if (pSocket != nullptr)
         {
-            check_connection(peers.peer(pSocket));
+            //check_connection(peers.peer(pSocket));
             //qDebug() << serverName << "Sending binary message to peer"
             //         << QHostAddressToString(pSocket->peerAddress())
             //         << pSocket->peerPort();
@@ -580,19 +642,16 @@ void Broker::enable_keepalive(bool enable)
         qDebug() << "Broker: Disabling keepalives";
         server.stop_keepalives();
         client.stop_keepalives();
-        server.set_keepalive_interval(0);
-        client.set_keepalive_interval(0);
+        if (!enable)
+        {
+            server.set_keepalive_interval(0);
+            client.set_keepalive_interval(0);
+        }
     }
 }
 
 void Broker::connection_hung()
 {
-    SslServer *srv = qobject_cast<SslServer *>(sender());
-    if (keepalive_enabled)
-    {
-        srv->set_keepalive_interval(keepalive_interval);
-        srv->start_keepalives();
-    }
 }
 
 void Broker::connection_restored()

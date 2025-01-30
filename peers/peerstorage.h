@@ -8,6 +8,8 @@
 #include <QWebSocket>
 #include <QTimer>
 
+using chrono_clock = std::chrono::high_resolution_clock;
+
 class PeerStorage;
 
 class Peer : public QObject
@@ -18,8 +20,8 @@ public:
     ~Peer();
 
     int pings_sequently_missed = 0;
-    std::chrono::time_point<std::chrono::high_resolution_clock> last_input_packet_time =
-                            std::chrono::high_resolution_clock::now();
+    std::chrono::time_point<chrono_clock> last_input_packet_time =
+                            chrono_clock::now();
     bool hanged_connection_flag = false;
     QTimer *keepalive_timer;
 
