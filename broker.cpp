@@ -227,7 +227,7 @@ void SslServer::stop_keepalive(Peer *peer)
     if (peer == nullptr)
         return;
 
-    if (peer->hanged_connection_flag &&
+    if (peer->hung_connection_flag &&
          keepalive_interval > 0)
     {
         if (peer->keepalive_timer->isActive())
@@ -290,8 +290,9 @@ void SslServer::check_connection(Peer *peer)
     if (peer == nullptr)
         return;
 
-    if (!peer->hanged_connection_flag)
+    if (!peer->hung_connection_flag)
     {
+        //Check active connection and mark it as hung if needed
         auto now = chrono_clock::now();
         //Convert to milliseconds
         int interval = std::chrono::duration_cast<std::chrono::milliseconds>
@@ -301,16 +302,28 @@ void SslServer::check_connection(Peer *peer)
         //         << QHostAddressToString(s->peerAddress())
         //         << s->peerPort() << s->requestUrl().path()
         //         << interval;
-        if (interval > hanged_connection_interval)
+        if (interval > hung_connection_interval)
         {
             qDebug() << serverName << "Connection hung"
                      << QHostAddressToString(peer->socket()->peerAddress())
                      << peer->socket()->peerPort();
-            peer->hanged_connection_flag = true;
+            peer->hung_connection_flag = true;
             if (keepalive_interval > 0)
                 start_keepalive(peer);
             emit connectionHung();
         }
+    }
+    //If connection is marked as hung,
+    //keepalives are enabled but not active,
+    //then start keepalives
+    else if (keepalive_interval > 0 &&
+            !peer->keepalive_timer->isActive())
+    {
+        qDebug() << serverName << "Found hung connection with stopped keepalives "
+                 "while keepalives are enabled"
+                 << QHostAddressToString(peer->socket()->peerAddress())
+                 << peer->socket()->peerPort();
+        start_keepalive(peer);
     }
 }
 
@@ -320,12 +333,12 @@ void SslServer::connection_restored(Peer *peer)
         return;
 
     peer->last_input_packet_time = chrono_clock::now();
-    if (peer->hanged_connection_flag)
+    if (peer->hung_connection_flag)
     {
-        qDebug() << serverName << "Hanged connection has been restored"
+        qDebug() << serverName << "Hung connection has been restored"
                  << QHostAddressToString(peer->socket()->peerAddress())
                  << peer->socket()->peerPort();
-        peer->hanged_connection_flag = false;
+        peer->hung_connection_flag = false;
         emit connectionRestored();
     }
 }
@@ -639,14 +652,20 @@ void Broker::enable_keepalive(bool enable)
     }
     else
     {
-        qDebug() << "Broker: Disabling keepalives";
-        server.stop_keepalives();
-        client.stop_keepalives();
-        if (!enable)
+        if (enable)
         {
+            qDebug() << "Broker: Stopping currently active keepalives";
+            server.set_keepalive_interval(keepalive_interval);
+            client.set_keepalive_interval(keepalive_interval);
+        }
+        else
+        {
+            qDebug() << "Broker: Disabling keepalives";
             server.set_keepalive_interval(0);
             client.set_keepalive_interval(0);
         }
+        server.stop_keepalives();
+        client.stop_keepalives();
     }
 }
 

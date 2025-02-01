@@ -22,7 +22,7 @@ public:
     int pings_sequently_missed = 0;
     std::chrono::time_point<chrono_clock> last_input_packet_time =
                             chrono_clock::now();
-    bool hanged_connection_flag = false;
+    bool hung_connection_flag = false;
     QTimer *keepalive_timer;
 
     QWebSocket* socket() { return pSocket; }
