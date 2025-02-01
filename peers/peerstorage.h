@@ -43,13 +43,10 @@ class PeerStorage : public QVector<Peer *>
     using QVector::append;
     using QVector::contains;
 public:
-    //PeerStorage();
-    ~PeerStorage();
-
     Peer* append(QWebSocket *s);
     bool contains(QString path);
     QVector<QWebSocket*> sockets(QString path) const;
-    QVector<Peer*> peers(QString path) const;
+    PeerStorage peers(QString path) const;
     Peer* peer(QWebSocket *s) const;
 };
 

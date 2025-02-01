@@ -71,7 +71,7 @@ private:
     int periodic_connections_check_interval = 15*1000;
     std::chrono::time_point<chrono_clock> last_connections_check =
         chrono_clock::now();
-    void check_connection(QVector<Peer*> plist);
+    void check_connection(PeerStorage &plist);
     void check_connection(Peer *peer);
     void check_connections();
     void connection_restored(Peer *peer);

@@ -279,7 +279,7 @@ void SslServer::check_connections()
     }
 }
 
-void SslServer::check_connection(QVector<Peer*> plist)
+void SslServer::check_connection(PeerStorage &plist)
 {
     for (auto p : plist)
         check_connection(p);

@@ -18,16 +18,6 @@ Peer::~Peer()
 }
 
 //==================================================
-PeerStorage::~PeerStorage()
-{
-    for (int i = 0; i < size(); i++)
-    {
-        auto s = at(i);
-        s->storage = nullptr;
-        s->deleteLater();
-    }
-}
-
 Peer* PeerStorage::append(QWebSocket *s)
 {
     Peer *p = new Peer(s);
@@ -60,9 +50,9 @@ QVector<QWebSocket*> PeerStorage::sockets(QString path) const
     return r;
 }
 
-QVector<Peer*> PeerStorage::peers(QString path) const
+PeerStorage PeerStorage::peers(QString path) const
 {
-    QVector<Peer*> r;
+    PeerStorage r;
     for (int i = 0; i < size(); i++)
     {
         Peer* p = at(i);
