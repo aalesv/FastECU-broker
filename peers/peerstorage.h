@@ -39,9 +39,9 @@ friend class PeerStorage;
 class PeerStorage : public QVector<Peer *>
 {
     //Need to use parent's overloaded functions
-    using QVector::QVector;
-    using QVector::append;
-    using QVector::contains;
+    using QVector<Peer *>::QVector;
+    using QVector<Peer *>::append;
+    using QVector<Peer *>::contains;
 public:
     Peer* append(QWebSocket *s);
     bool contains(QString path);
