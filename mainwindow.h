@@ -71,6 +71,7 @@ private slots:
     void on_lineEdit_server_password_textChanged(const QString &arg1);
 
     void on_checkBox_enable_keepalives_stateChanged(int arg1);
+    void showLogOutputAreaContextMenu(const QPoint &pos);
 
 private:
     Ui::MainWindow *ui;

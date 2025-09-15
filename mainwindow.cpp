@@ -112,6 +112,11 @@ MainWindow::MainWindow(QWidget *parent)
     server_status_label->setOff(true);
     client_status_label->setOff(true);
 
+    //Custom right mouse button menu for logs output
+    ui->plainTextEdit_logs->setContextMenuPolicy(Qt::CustomContextMenu);
+    QObject::connect(ui->plainTextEdit_logs, &QWidget::customContextMenuRequested,
+                     this, &MainWindow::showLogOutputAreaContextMenu);
+
     keepalive_enabled = ui->checkBox_enable_keepalives->isChecked();
 
     this->update_ui();
@@ -227,3 +232,16 @@ void MainWindow::on_checkBox_enable_keepalives_stateChanged(int arg1)
         broker->enable_keepalive(keepalive_enabled);
 }
 
+void MainWindow::showLogOutputAreaContextMenu(const QPoint &pos)
+{
+    QMenu *menu = ui->plainTextEdit_logs->createStandardContextMenu();
+    menu->addSeparator();
+    QAction *clear = menu->addAction("Clear");
+    QObject::connect(clear, &QAction::triggered,
+                     this, [this] (bool) {
+                                this->ui->plainTextEdit_logs->clear();
+    });
+    menu->exec(QCursor::pos());
+
+    menu->deleteLater();
+}
